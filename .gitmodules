@@ -1,3 +1,6 @@
 [submodule "extern/glfw"]
 	path = extern/glfw
 	url = git@github.com:glfw/glfw.git
+[submodule "extern/vk-bootstrap"]
+	path = extern/vk-bootstrap
+	url = git@github.com:charles-lunarg/vk-bootstrap.git
