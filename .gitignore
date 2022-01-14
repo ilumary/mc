@@ -44,5 +44,6 @@ CTestTestfile.cmake
 _deps
 
 out/build/
+shaders/bin/
 
 .DS_STORE
