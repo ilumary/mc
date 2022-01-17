@@ -43,7 +43,9 @@ struct Vertex {
 
 struct Mesh {
     std::vector<Vertex> vertices_;
+    std::vector<std::uint32_t> indices_;
     AllocatedBuffer vertex_buffer_;
+    AllocatedBuffer index_buffer_;
 };
 
 class Application {

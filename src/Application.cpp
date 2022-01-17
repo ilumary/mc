@@ -43,7 +43,7 @@ Application::Application() {
 }
 
 Application::~Application() {
-
+    vmaDestroyBuffer(allocator_, terrain_mesh_.index_buffer_.buffer_, terrain_mesh_.index_buffer_.allocation_);
     vmaDestroyBuffer(allocator_, terrain_mesh_.vertex_buffer_.buffer_, terrain_mesh_.vertex_buffer_.allocation_);
 
     vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
@@ -437,7 +437,11 @@ void Application::render() {
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cmd, 0, 1, &terrain_mesh_.vertex_buffer_.buffer_, &offset);
 
-    vkCmdDraw(cmd, static_cast<std::uint32_t>(terrain_mesh_.vertices_.size()), 1, 0, 0);
+    vkCmdBindIndexBuffer(cmd, terrain_mesh_.index_buffer_.buffer_, 0, VK_INDEX_TYPE_UINT32);
+
+    vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(terrain_mesh_.indices_.size()), 1, 0, 0, 0);
+
+    //vkCmdDraw(cmd, static_cast<std::uint32_t>(terrain_mesh_.vertices_.size()), 1, 0, 0);
 
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
@@ -484,11 +488,15 @@ void Application::load_mesh() {
     terrain_mesh_.vertices_[1].color = {0.f, 1.f, 0.0f};
     terrain_mesh_.vertices_[2].color = {0.f, 0.f, 1.0f};
 
+    terrain_mesh_.indices_ = {0, 1, 2};
+
     upload_mesh(terrain_mesh_);
 }
 
 void Application::upload_mesh(Mesh& mesh) {
-    const VkBufferCreateInfo buffer_create_info = {
+    {
+    //vertex buffer
+    const VkBufferCreateInfo vertex_buffer_create_info = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = mesh.vertices_.size() * sizeof(Vertex),
         .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -498,13 +506,37 @@ void Application::upload_mesh(Mesh& mesh) {
         .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
     };
 
-    VK_CHECK(vmaCreateBuffer(allocator_, &buffer_create_info, &allocation_info, &mesh.vertex_buffer_.buffer_, 
+    VK_CHECK(vmaCreateBuffer(allocator_, &vertex_buffer_create_info, &allocation_info, &mesh.vertex_buffer_.buffer_, 
                             &mesh.vertex_buffer_.allocation_, nullptr));
 
-    void* data;
-	vmaMapMemory(allocator_, mesh.vertex_buffer_.allocation_, &data);
-	memcpy(data, mesh.vertices_.data(), mesh.vertices_.size() * sizeof(Vertex));
+    void* vertex_data;
+	vmaMapMemory(allocator_, mesh.vertex_buffer_.allocation_, &vertex_data);
+	memcpy(vertex_data, mesh.vertices_.data(), mesh.vertices_.size() * sizeof(Vertex));
 	vmaUnmapMemory(allocator_, mesh.vertex_buffer_.allocation_);
+
+    }
+
+    {
+    //index buffer
+    const VkBufferCreateInfo index_buffer_create_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = mesh.indices_.size() * sizeof(std::uint32_t),
+        .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+    };
+
+    const VmaAllocationCreateInfo allocation_info = {
+        .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+    };
+
+    VK_CHECK(vmaCreateBuffer(allocator_, &index_buffer_create_info, &allocation_info, &mesh.index_buffer_.buffer_, 
+                            &mesh.index_buffer_.allocation_, nullptr));
+
+    void* index_data;
+	vmaMapMemory(allocator_, mesh.index_buffer_.allocation_, &index_data);
+	memcpy(index_data, mesh.indices_.data(), mesh.indices_.size() * sizeof(std::uint32_t));
+	vmaUnmapMemory(allocator_, mesh.index_buffer_.allocation_);
+
+    }
 }
 
 VkVertexInputBindingDescription Vertex::binding_description() {
