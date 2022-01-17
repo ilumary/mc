@@ -11,6 +11,13 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <fstream>
+
+#define VK_CHECK(x)                                     \
+    do {                                                \
+        VkResult err = x;                               \
+        if(err) { fmt::print("Vulkan error {}", err); } \
+    } while(0)                                          \
 
 struct FrameData {
     VkSemaphore render_semaphore_{};
@@ -46,6 +53,7 @@ class Application {
     FrameData frame_data_{};
     uint32_t frame_number_ = 0;
 
+    VkPipelineLayout graphics_pipeline_layout_{};
     VkPipeline graphics_pipeline_{};
 
 public:
@@ -62,6 +70,9 @@ private:
     void init_framebuffer();
     void init_sync_structures();
     void init_graphics_pipeline();
+
+    std::vector<char> readFile(const std::string& filename);
+    VkShaderModule createShaderModule (const std::vector<char>& code);
 
     void render();
 };

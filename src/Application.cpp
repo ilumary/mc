@@ -38,9 +38,13 @@ Application::Application() {
     init_renderpass();
     init_framebuffer();
     init_sync_structures();
+    init_graphics_pipeline();
 }
 
 Application::~Application() {
+
+    vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
+    vkDestroyPipelineLayout(device_, graphics_pipeline_layout_, nullptr);
 
     vkDestroyFence(device_, frame_data_.render_fence_, nullptr);
     vkDestroySemaphore(device_, frame_data_.render_semaphore_, nullptr);
@@ -220,6 +224,159 @@ void Application::init_sync_structures() {
     vkCreateFence(device_, &fence_create_info, nullptr, &frame_data_.render_fence_);
 }
 
+std::vector<char> Application::readFile(const std::string& filename) {
+	std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+	if (!file.is_open()) {
+		throw std::runtime_error ("failed to open file!");
+	}
+
+	size_t file_size = (size_t)file.tellg ();
+	std::vector<char> buffer(file_size);
+
+	file.seekg(0);
+	file.read(buffer.data(), static_cast<std::streamsize>(file_size));
+
+	file.close();
+
+	return buffer;
+}
+
+VkShaderModule Application::createShaderModule(const std::vector<char>& code) {
+	VkShaderModuleCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	create_info.codeSize = code.size ();
+	create_info.pCode = reinterpret_cast<const uint32_t*> (code.data ());
+
+	VkShaderModule shaderModule;
+	if (vkCreateShaderModule(device_, &create_info, nullptr, &shaderModule) != VK_SUCCESS) {
+		return VK_NULL_HANDLE; 
+	}
+
+	return shaderModule;
+}
+
+void Application::init_graphics_pipeline() {
+    auto vert_shader_code = readFile("../../shaders/bin/vert.spv");
+    auto frag_shader_code = readFile("../../shaders/bin/frag.spv");
+
+    VkShaderModule vert_shader_module = createShaderModule(vert_shader_code);
+    VkShaderModule frag_shader_module = createShaderModule(frag_shader_code);
+
+    VkPipelineShaderStageCreateInfo vert_shader_stage_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+        .module = vert_shader_module,
+        .pName = "main",
+    };
+
+    VkPipelineShaderStageCreateInfo frag_shader_stage_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .module = frag_shader_module,
+        .pName = "main",
+    };
+
+    VkPipelineShaderStageCreateInfo shader_stages[] = {vert_shader_stage_info, frag_shader_stage_info};
+
+    VkPipelineVertexInputStateCreateInfo vertex_input_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 0,
+        .vertexAttributeDescriptionCount = 0,
+    };
+    
+    VkPipelineInputAssemblyStateCreateInfo input_assembly = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .primitiveRestartEnable = VK_FALSE,
+    };
+    
+
+    VkViewport viewport = {
+        .x = 0.0f,
+        .y = 0.0f,
+        .width = (float) window_extent_.width,
+        .height = (float) window_extent_.height,
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
+    };
+    
+    VkRect2D scissor = {
+        .offset = {0, 0},
+        .extent = window_extent_,
+    };
+
+    VkPipelineViewportStateCreateInfo viewport_state = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = 1,
+        .pViewports = &viewport,
+        .scissorCount = 1,
+        .pScissors = &scissor,
+    };
+    
+
+    VkPipelineRasterizationStateCreateInfo rasterizer = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .depthClampEnable = VK_FALSE,
+        .rasterizerDiscardEnable = VK_FALSE,
+        .polygonMode = VK_POLYGON_MODE_FILL,
+        .lineWidth = 1.0f,
+        .cullMode = VK_CULL_MODE_BACK_BIT,
+        .frontFace = VK_FRONT_FACE_CLOCKWISE,
+        .depthBiasEnable = VK_FALSE,
+    };
+
+    VkPipelineMultisampleStateCreateInfo multisampling = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .sampleShadingEnable = VK_FALSE,
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+    };
+
+    VkPipelineColorBlendAttachmentState colorBlendAttachment = {
+        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+        .blendEnable = VK_FALSE,
+    };
+    
+
+    VkPipelineColorBlendStateCreateInfo color_blending = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .logicOpEnable = VK_FALSE,
+        .logicOp = VK_LOGIC_OP_COPY,
+        .attachmentCount = 1,
+        .pAttachments = &colorBlendAttachment,
+        .blendConstants = {0.0f, 0.0f, 0.0f, 0.0f},
+    };
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 0,
+        .pushConstantRangeCount = 0,
+    };
+
+    VK_CHECK(vkCreatePipelineLayout(device_, &pipelineLayoutInfo, nullptr, &graphics_pipeline_layout_));
+
+    VkGraphicsPipelineCreateInfo pipelineInfo = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount = 2,
+        .pStages = shader_stages,
+        .pVertexInputState = &vertex_input_info,
+        .pInputAssemblyState = &input_assembly,
+        .pViewportState = &viewport_state,
+        .pRasterizationState = &rasterizer,
+        .pMultisampleState = &multisampling,
+        .pColorBlendState = &color_blending,
+        .layout = graphics_pipeline_layout_,
+        .renderPass = render_pass_,
+        .subpass = 0,
+        .basePipelineHandle = VK_NULL_HANDLE,
+    };
+
+    VK_CHECK(vkCreateGraphicsPipelines(device_, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphics_pipeline_));
+
+    vkDestroyShaderModule(device_, frag_shader_module, nullptr);
+    vkDestroyShaderModule(device_, vert_shader_module, nullptr);
+}
+
 void Application::render() {
 
     vkWaitForFences(device_, 1, &frame_data_.render_fence_, true, 1000000000);
@@ -256,6 +413,11 @@ void Application::render() {
     };
 
     vkCmdBeginRenderPass(cmd, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_);
+
+    vkCmdDraw(cmd, 3, 1, 0, 0);
+
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
 
@@ -288,8 +450,4 @@ void Application::render() {
     vkQueuePresentKHR(present_queue_, &present_info);
 
     ++frame_number_;
-}
-
-void Application::init_graphics_pipeline() {
-    
 }
