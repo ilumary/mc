@@ -39,9 +39,12 @@ Application::Application() {
     init_framebuffer();
     init_sync_structures();
     init_graphics_pipeline();
+    load_mesh();
 }
 
 Application::~Application() {
+
+    vmaDestroyBuffer(allocator_, terrain_mesh_.vertex_buffer_.buffer_, terrain_mesh_.vertex_buffer_.allocation_);
 
     vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
     vkDestroyPipelineLayout(device_, graphics_pipeline_layout_, nullptr);
@@ -62,6 +65,8 @@ Application::~Application() {
         vkDestroyImageView(device_, image_view, nullptr);
     }
     vkDestroySwapchainKHR(device_, swapchain_, nullptr);
+
+    vmaDestroyAllocator(allocator_);
 
     vkDestroyDevice(device_, nullptr);
     vkDestroySurfaceKHR(instance_, surface_, nullptr);
@@ -112,6 +117,14 @@ void Application::init_vk_device() {
     graphics_queue_ = vkb_device.get_queue(vkb::QueueType::graphics).value();
     graphics_queue_family_index_ = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
     present_queue_ = vkb_device.get_queue(vkb::QueueType::present).value();
+
+    const VmaAllocatorCreateInfo allocator_create_info = {
+        .instance = instance_,
+        .physicalDevice = physical_device_,
+        .device = device_,
+    };
+
+    VK_CHECK(vmaCreateAllocator(&allocator_create_info, &allocator_));
 }
 
 void Application::init_swapchain() {
@@ -279,10 +292,15 @@ void Application::init_graphics_pipeline() {
 
     VkPipelineShaderStageCreateInfo shader_stages[] = {vert_shader_stage_info, frag_shader_stage_info};
 
+    static const auto vertex_binding_description = Vertex::binding_description();
+    static const auto vertex_attributes_description = Vertex::attributes_description();
+
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 0,
-        .vertexAttributeDescriptionCount = 0,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &vertex_binding_description,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attributes_description.size()),
+        .pVertexAttributeDescriptions = vertex_attributes_description.data(),
     };
     
     VkPipelineInputAssemblyStateCreateInfo input_assembly = {
@@ -416,7 +434,10 @@ void Application::render() {
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_);
 
-    vkCmdDraw(cmd, 3, 1, 0, 0);
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(cmd, 0, 1, &terrain_mesh_.vertex_buffer_.buffer_, &offset);
+
+    vkCmdDraw(cmd, static_cast<std::uint32_t>(terrain_mesh_.vertices_.size()), 1, 0, 0);
 
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
@@ -450,4 +471,76 @@ void Application::render() {
     vkQueuePresentKHR(present_queue_, &present_info);
 
     ++frame_number_;
+}
+
+void Application::load_mesh() {
+    terrain_mesh_.vertices_.resize(3);
+
+    terrain_mesh_.vertices_[0].position = {0.7f, 0.7f, 0.0f};
+    terrain_mesh_.vertices_[1].position = {-0.7f, 0.7f, 0.0f};
+    terrain_mesh_.vertices_[2].position = {0.f, -0.7f, 0.0f};
+
+    terrain_mesh_.vertices_[0].color = {1.f, 0.f, 0.0f};
+    terrain_mesh_.vertices_[1].color = {0.f, 1.f, 0.0f};
+    terrain_mesh_.vertices_[2].color = {0.f, 0.f, 1.0f};
+
+    upload_mesh(terrain_mesh_);
+}
+
+void Application::upload_mesh(Mesh& mesh) {
+    const VkBufferCreateInfo buffer_create_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = mesh.vertices_.size() * sizeof(Vertex),
+        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+    };
+
+    const VmaAllocationCreateInfo allocation_info = {
+        .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+    };
+
+    VK_CHECK(vmaCreateBuffer(allocator_, &buffer_create_info, &allocation_info, &mesh.vertex_buffer_.buffer_, 
+                            &mesh.vertex_buffer_.allocation_, nullptr));
+
+    void* data;
+	vmaMapMemory(allocator_, mesh.vertex_buffer_.allocation_, &data);
+	memcpy(data, mesh.vertices_.data(), mesh.vertices_.size() * sizeof(Vertex));
+	vmaUnmapMemory(allocator_, mesh.vertex_buffer_.allocation_);
+}
+
+VkVertexInputBindingDescription Vertex::binding_description() {
+    return VkVertexInputBindingDescription {
+        .binding = 0,
+        .stride = sizeof(Vertex),
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+    };
+}
+
+std::vector<VkVertexInputAttributeDescription> Vertex::attributes_description() {
+    std::vector<VkVertexInputAttributeDescription> attributes;
+    
+	VkVertexInputAttributeDescription positionAttribute = {
+        .binding = 0,
+        .location = 0,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = offsetof(Vertex, position),
+    };
+
+	VkVertexInputAttributeDescription normalAttribute = {
+        .binding = 0,
+        .location = 1,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = offsetof(Vertex, normal),
+    };
+
+	VkVertexInputAttributeDescription colorAttribute = {
+        .binding = 0,
+        .location = 2,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = offsetof(Vertex, color),
+    };
+
+	attributes.push_back(positionAttribute);
+	attributes.push_back(normalAttribute);
+	attributes.push_back(colorAttribute);
+	return attributes;
 }

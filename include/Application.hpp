@@ -5,8 +5,10 @@
 #include <GLFW/glfw3.h>
 
 #include "VkBootstrap.h"
+#include "vk_mem_alloc.h"
 
 #include <fmt/core.h>
+#include <glm/vec3.hpp>
 
 #include <iostream>
 #include <vector>
@@ -25,6 +27,25 @@ struct FrameData {
     VkFence render_fence_{};
 };
 
+struct AllocatedBuffer {
+    VkBuffer buffer_;
+    VmaAllocation allocation_;
+};
+
+struct Vertex {
+    glm::vec3 position;
+    glm::vec3 normal;
+    glm::vec3 color;
+
+    static VkVertexInputBindingDescription binding_description();
+    static std::vector<VkVertexInputAttributeDescription> attributes_description();
+};
+
+struct Mesh {
+    std::vector<Vertex> vertices_;
+    AllocatedBuffer vertex_buffer_;
+};
+
 class Application {
 
     GLFWwindow* window_ = nullptr;
@@ -39,6 +60,8 @@ class Application {
     VkQueue graphics_queue_{};
     uint32_t graphics_queue_family_index_ = 0;
     VkQueue present_queue_{};
+
+    VmaAllocator allocator_{};
 
     VkCommandPool command_pool_;
     VkCommandBuffer command_buffer_;
@@ -56,6 +79,8 @@ class Application {
     VkPipelineLayout graphics_pipeline_layout_{};
     VkPipeline graphics_pipeline_{};
 
+    Mesh terrain_mesh_{};
+
 public:
     Application();
     ~Application();
@@ -72,9 +97,11 @@ private:
     void init_graphics_pipeline();
 
     std::vector<char> readFile(const std::string& filename);
-    VkShaderModule createShaderModule (const std::vector<char>& code);
+    VkShaderModule createShaderModule(const std::vector<char>& code);
 
     void render();
+    void load_mesh();
+    void upload_mesh(Mesh& mesh);
 };
 
 #endif // APPLICATION_HPP
