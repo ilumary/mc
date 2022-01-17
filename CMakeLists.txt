@@ -10,12 +10,14 @@ file(GLOB SOURCES "src/*.cpp")
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-add_subdirectory(extern/vk-bootstrap)
+add_subdirectory(extern/vk-bootstrap extern/vma)
 
 target_include_directories(${PROJECT_NAME} 
                 PUBLIC /opt/homebrew/include
                 PUBLIC /Library/Vulkan/macOS/include 
-                PUBLIC extern/vk-bootstrap/src)
+                PUBLIC extern/vk-bootstrap/src
+                PUBLIC extern/vma/include
+)
 
 target_link_directories(${PROJECT_NAME} 
                 PUBLIC /opt/homebrew/lib  
