@@ -25,7 +25,12 @@ struct FrameData {
     VkSemaphore render_semaphore_{};
     VkSemaphore present_semaphore_{};
     VkFence render_fence_{};
+
+    VkCommandPool command_pool_{};
+    VkCommandBuffer command_buffer_{};
 };
+
+constexpr std::uint32_t frames_in_flight = 2;
 
 struct AllocatedBuffer {
     VkBuffer buffer_;
@@ -70,8 +75,8 @@ class Application {
 
     VmaAllocator allocator_{};
 
-    VkCommandPool command_pool_;
-    VkCommandBuffer command_buffer_;
+    //VkCommandPool command_pool_;
+    //VkCommandBuffer command_buffer_;
 
     VkRenderPass render_pass_{};
     std::vector<VkFramebuffer> framebuffers_{};
@@ -80,7 +85,7 @@ class Application {
     VkFormat swapchain_image_format_{};
     std::vector<VkImage> swapchain_images_{};
     std::vector<VkImageView> swapchain_image_views_{};
-    FrameData frame_data_{};
+    FrameData frame_data_[frames_in_flight]{};
     uint32_t frame_number_ = 0;
 
     VkPipelineLayout graphics_pipeline_layout_{};
@@ -109,6 +114,8 @@ private:
 
     std::vector<char> readFile(const std::string& filename);
     VkShaderModule createShaderModule(const std::vector<char>& code);
+
+    FrameData& get_current_frame();
 
     void render();
     void load_mesh();

@@ -49,13 +49,14 @@ Application::~Application() {
     vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
     vkDestroyPipelineLayout(device_, graphics_pipeline_layout_, nullptr);
 
-    vkDestroyFence(device_, frame_data_.render_fence_, nullptr);
-    vkDestroySemaphore(device_, frame_data_.render_semaphore_, nullptr);
-    vkDestroySemaphore(device_, frame_data_.present_semaphore_, nullptr);
-
     vkDestroyRenderPass(device_, render_pass_, nullptr);
 
-    vkDestroyCommandPool(device_, command_pool_, nullptr);
+    for(auto& frame_data : frame_data_) {
+        vkDestroyFence(device_, frame_data.render_fence_, nullptr);
+        vkDestroySemaphore(device_, frame_data.render_semaphore_, nullptr);
+        vkDestroySemaphore(device_, frame_data.present_semaphore_, nullptr);
+        vkDestroyCommandPool(device_, frame_data.command_pool_, nullptr);
+    }
 
     for(auto &framebuffer : framebuffers_) {
         vkDestroyFramebuffer(device_, framebuffer, nullptr);
@@ -194,17 +195,20 @@ void Application::init_command() {
         .queueFamilyIndex = graphics_queue_family_index_,
     };
     
-    vkCreateCommandPool(device_, &command_pool_create_info, nullptr, &command_pool_);
+    for(std::uint32_t i = 0; i < frames_in_flight; ++i) {
+        auto& frame_data = frame_data_[i];
+        vkCreateCommandPool(device_, &command_pool_create_info, nullptr, &frame_data.command_pool_);
 
-    const VkCommandBufferAllocateInfo command_buffer_allocate_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .pNext = nullptr,
-        .commandPool = command_pool_,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
-    };
+        const VkCommandBufferAllocateInfo command_buffer_allocate_info = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext = nullptr,
+            .commandPool = frame_data.command_pool_,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        };
 
-    vkAllocateCommandBuffers(device_, &command_buffer_allocate_info, &command_buffer_);
+        vkAllocateCommandBuffers(device_, &command_buffer_allocate_info, &frame_data.command_buffer_);
+    }
 }
 
 void Application::init_renderpass() {
@@ -292,16 +296,17 @@ void Application::init_sync_structures() {
         .flags = 0,
     };
 
-    vkCreateSemaphore(device_, &semaphore_create_info, nullptr, &frame_data_.render_semaphore_);
-    vkCreateSemaphore(device_, &semaphore_create_info, nullptr, &frame_data_.present_semaphore_);
-
     const VkFenceCreateInfo fence_create_info = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
     };
 
-    vkCreateFence(device_, &fence_create_info, nullptr, &frame_data_.render_fence_);
+    for(auto& frame_data : frame_data_) {
+        vkCreateSemaphore(device_, &semaphore_create_info, nullptr, &frame_data.render_semaphore_);
+        vkCreateSemaphore(device_, &semaphore_create_info, nullptr, &frame_data.present_semaphore_);
+        vkCreateFence(device_, &fence_create_info, nullptr, &frame_data.render_fence_);
+    }
 }
 
 std::vector<char> Application::readFile(const std::string& filename) {
@@ -476,16 +481,17 @@ void Application::init_graphics_pipeline() {
 }
 
 void Application::render() {
+    auto current_frame_data = get_current_frame();
 
-    vkWaitForFences(device_, 1, &frame_data_.render_fence_, true, 1000000000);
-    vkResetFences(device_, 1, &frame_data_.render_fence_);
+    vkWaitForFences(device_, 1, &current_frame_data.render_fence_, true, 1000000000);
+    vkResetFences(device_, 1, &current_frame_data.render_fence_);
 
     uint32_t swapchain_image_index = 0;
-    vkAcquireNextImageKHR(device_, swapchain_, 1000000000, frame_data_.present_semaphore_, nullptr, &swapchain_image_index);
+    vkAcquireNextImageKHR(device_, swapchain_, 1000000000, current_frame_data.present_semaphore_, nullptr, &swapchain_image_index);
     
-    vkResetCommandBuffer(command_buffer_, 0);
+    vkResetCommandBuffer(current_frame_data.command_buffer_, 0);
 
-    const VkCommandBuffer cmd = command_buffer_;
+    const VkCommandBuffer cmd = current_frame_data.command_buffer_;
 
     const VkCommandBufferBeginInfo cmd_begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -534,22 +540,22 @@ void Application::render() {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = nullptr,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &frame_data_.present_semaphore_, 
+        .pWaitSemaphores = &current_frame_data.present_semaphore_, 
         .pWaitDstStageMask = &wait_stage,
         .commandBufferCount = 1,
-        .pCommandBuffers = &command_buffer_,
+        .pCommandBuffers = &current_frame_data.command_buffer_,
         .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &frame_data_.render_semaphore_,
+        .pSignalSemaphores = &current_frame_data.render_semaphore_,
     };
 
-    vkQueueSubmit(graphics_queue_, 1, &submit_info, frame_data_.render_fence_);
+    vkQueueSubmit(graphics_queue_, 1, &submit_info, current_frame_data.render_fence_);
 
     const VkPresentInfoKHR present_info = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext = nullptr,
         .pSwapchains = &swapchain_,
         .swapchainCount = 1,
-        .pWaitSemaphores = &frame_data_.render_semaphore_,
+        .pWaitSemaphores = &current_frame_data.render_semaphore_,
         .waitSemaphoreCount = 1,
         .pImageIndices = &swapchain_image_index,
     };
@@ -657,4 +663,8 @@ std::vector<VkVertexInputAttributeDescription> Vertex::attributes_description() 
 	attributes.push_back(normalAttribute);
 	attributes.push_back(colorAttribute);
 	return attributes;
+}
+
+FrameData& Application::get_current_frame() {
+    return frame_data_[frame_number_ % frames_in_flight];
 }
