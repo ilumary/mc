@@ -32,6 +32,11 @@ struct AllocatedBuffer {
     VmaAllocation allocation_;
 };
 
+struct AllocatedImage {
+    VkImage image_;
+    VmaAllocation allocation_;
+};
+
 struct Vertex {
     glm::vec3 position;
     glm::vec3 normal;
@@ -80,6 +85,10 @@ class Application {
 
     VkPipelineLayout graphics_pipeline_layout_{};
     VkPipeline graphics_pipeline_{};
+
+    VkImageView depth_image_view_{};
+    AllocatedImage depth_image_{};
+    VkFormat depth_image_format_{};
 
     Mesh terrain_mesh_{};
 
