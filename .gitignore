@@ -45,5 +45,6 @@ _deps
 
 out/build/
 shaders/bin/
+.vscode/
 
 .DS_STORE
