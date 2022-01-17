@@ -75,9 +75,6 @@ class Application {
 
     VmaAllocator allocator_{};
 
-    //VkCommandPool command_pool_;
-    //VkCommandBuffer command_buffer_;
-
     VkRenderPass render_pass_{};
     std::vector<VkFramebuffer> framebuffers_{};
 

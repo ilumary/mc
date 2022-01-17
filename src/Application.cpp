@@ -1,23 +1,5 @@
 #include "../include/Application.hpp"
 
-namespace {
-    auto create_surface_glfw(VkInstance instance, GLFWwindow* window, VkAllocationCallbacks* allocator = nullptr) -> VkSurfaceKHR {
-        VkSurfaceKHR surface = VK_NULL_HANDLE;
-        VkResult err = glfwCreateWindowSurface(instance, window, allocator, &surface);
-        if (err) {
-            const char* error_msg;
-            int ret = glfwGetError(&error_msg);
-            if (ret != 0) {
-                fmt::print("{} ", ret);
-                if (error_msg != nullptr) { fmt::print("{} ", error_msg); }
-                fmt::print("\n");
-            }
-            surface = VK_NULL_HANDLE;
-        }
-        return surface;
-    }
-}
-
 Application::Application() {
     if (!glfwInit()) { std::exit(1); }
     fmt::print("GLFW initialised\n");
@@ -96,7 +78,7 @@ void Application::init_vk_device() {
     }
         
     instance_ = instance_ret->instance;
-    surface_ = create_surface_glfw(instance_, window_);
+    glfwCreateWindowSurface(instance_, window_, nullptr, &surface_);
     debug_messenger_ = instance_ret->debug_messenger;
 
     vkb::PhysicalDeviceSelector phys_device_selector(instance_ret.value());
