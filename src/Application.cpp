@@ -20,13 +20,14 @@ Application::Application() {
     init_renderpass();
     init_framebuffer();
     init_sync_structures();
+    init_descriptors();
     init_graphics_pipeline();
     load_mesh();
 }
 
 Application::~Application() {
-    vmaDestroyBuffer(allocator_, terrain_mesh_.index_buffer_.buffer_, terrain_mesh_.index_buffer_.allocation_);
-    vmaDestroyBuffer(allocator_, terrain_mesh_.vertex_buffer_.buffer_, terrain_mesh_.vertex_buffer_.allocation_);
+    vmaDestroyBuffer(allocator_, terrain_mesh_.index_buffer_.buffer, terrain_mesh_.index_buffer_.allocation);
+    vmaDestroyBuffer(allocator_, terrain_mesh_.vertex_buffer_.buffer, terrain_mesh_.vertex_buffer_.allocation);
 
     vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
     vkDestroyPipelineLayout(device_, graphics_pipeline_layout_, nullptr);
@@ -34,11 +35,15 @@ Application::~Application() {
     vkDestroyRenderPass(device_, render_pass_, nullptr);
 
     for(auto& frame_data : frame_data_) {
-        vkDestroyFence(device_, frame_data.render_fence_, nullptr);
-        vkDestroySemaphore(device_, frame_data.render_semaphore_, nullptr);
-        vkDestroySemaphore(device_, frame_data.present_semaphore_, nullptr);
-        vkDestroyCommandPool(device_, frame_data.command_pool_, nullptr);
+        vmaDestroyBuffer(allocator_, frame_data.camera_buffer.buffer, frame_data.camera_buffer.allocation);
+        vkDestroyFence(device_, frame_data.render_fence, nullptr);
+        vkDestroySemaphore(device_, frame_data.render_semaphore, nullptr);
+        vkDestroySemaphore(device_, frame_data.present_semaphore, nullptr);
+        vkDestroyCommandPool(device_, frame_data.command_pool, nullptr);
     }
+
+    vkDestroyDescriptorPool(device_, descriptor_pool_, nullptr);
+    vkDestroyDescriptorSetLayout(device_, global_descriptor_set_layout_, nullptr);
 
     for(auto &framebuffer : framebuffers_) {
         vkDestroyFramebuffer(device_, framebuffer, nullptr);
@@ -48,7 +53,7 @@ Application::~Application() {
         vkDestroyImageView(device_, image_view, nullptr);
     }
     vkDestroyImageView(device_, depth_image_view_, nullptr);
-    vmaDestroyImage(allocator_, depth_image_.image_, depth_image_.allocation_);
+    vmaDestroyImage(allocator_, depth_image_.image, depth_image_.allocation);
     vkDestroySwapchainKHR(device_, swapchain_, nullptr);
 
     vmaDestroyAllocator(allocator_);
@@ -149,12 +154,12 @@ void Application::init_swapchain() {
         .requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
     };
 
-    vmaCreateImage(allocator_, &depth_image_create_info, &dimg_allocinfo, &depth_image_.image_, &depth_image_.allocation_, nullptr);
+    vmaCreateImage(allocator_, &depth_image_create_info, &dimg_allocinfo, &depth_image_.image, &depth_image_.allocation, nullptr);
 
     const VkImageViewCreateInfo depth_view_create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .pNext = nullptr,
-        .image = depth_image_.image_,
+        .image = depth_image_.image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = depth_image_format_,
         .subresourceRange = {
@@ -179,17 +184,17 @@ void Application::init_command() {
     
     for(std::uint32_t i = 0; i < frames_in_flight; ++i) {
         auto& frame_data = frame_data_[i];
-        vkCreateCommandPool(device_, &command_pool_create_info, nullptr, &frame_data.command_pool_);
+        vkCreateCommandPool(device_, &command_pool_create_info, nullptr, &frame_data.command_pool);
 
         const VkCommandBufferAllocateInfo command_buffer_allocate_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .pNext = nullptr,
-            .commandPool = frame_data.command_pool_,
+            .commandPool = frame_data.command_pool,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };
 
-        vkAllocateCommandBuffers(device_, &command_buffer_allocate_info, &frame_data.command_buffer_);
+        vkAllocateCommandBuffers(device_, &command_buffer_allocate_info, &frame_data.command_buffer);
     }
 }
 
@@ -285,9 +290,76 @@ void Application::init_sync_structures() {
     };
 
     for(auto& frame_data : frame_data_) {
-        vkCreateSemaphore(device_, &semaphore_create_info, nullptr, &frame_data.render_semaphore_);
-        vkCreateSemaphore(device_, &semaphore_create_info, nullptr, &frame_data.present_semaphore_);
-        vkCreateFence(device_, &fence_create_info, nullptr, &frame_data.render_fence_);
+        vkCreateSemaphore(device_, &semaphore_create_info, nullptr, &frame_data.render_semaphore);
+        vkCreateSemaphore(device_, &semaphore_create_info, nullptr, &frame_data.present_semaphore);
+        vkCreateFence(device_, &fence_create_info, nullptr, &frame_data.render_fence);
+    }
+}
+
+void Application::init_descriptors() {
+	const VkDescriptorSetLayoutBinding camera_buffer_binding = {
+        .binding = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+    };
+
+	const VkDescriptorSetLayoutCreateInfo set_layout_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext = nullptr,
+        .bindingCount = 1,
+        .flags = 0,
+        .pBindings = &camera_buffer_binding,
+    };
+
+	std::vector<VkDescriptorPoolSize> sizes = {{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 }};
+
+	VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .flags = 0,
+        .maxSets = 10,
+        .poolSizeCount = static_cast<std::uint32_t>(sizes.size()),
+        .pPoolSizes = sizes.data(),
+    };
+
+	VK_CHECK(vkCreateDescriptorPool(device_, &descriptor_pool_create_info, nullptr, &descriptor_pool_));
+
+	VK_CHECK(vkCreateDescriptorSetLayout(device_, &set_layout_info, nullptr, &global_descriptor_set_layout_));
+
+    for (std::uint32_t i = 0; i < frames_in_flight; ++i) {
+        frame_data_[i].camera_buffer = create_buffer({
+            .alloc_size = sizeof(GPUCameraData),
+            .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+        });
+
+        const VkDescriptorSetAllocateInfo alloc_info = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .pNext = nullptr,
+            .descriptorPool = descriptor_pool_,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &global_descriptor_set_layout_,
+        };
+
+        vkAllocateDescriptorSets(device_, &alloc_info, &frame_data_[i].global_descriptor);
+
+        const VkDescriptorBufferInfo buffer_info = {
+            .buffer = frame_data_[i].camera_buffer.buffer,
+            .offset = 0,
+            .range = sizeof(GPUCameraData),
+        };
+
+        VkWriteDescriptorSet write_set = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = nullptr,
+            .dstBinding = 0,
+            .dstSet = frame_data_[i].global_descriptor,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pBufferInfo = &buffer_info,
+        };
+
+        vkUpdateDescriptorSets(device_, 1, &write_set, 0, nullptr);
     }
 }
 
@@ -421,7 +493,8 @@ void Application::init_graphics_pipeline() {
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 0,
+        .setLayoutCount = 1,
+        .pSetLayouts = &global_descriptor_set_layout_,
         .pushConstantRangeCount = 0,
     };
 
@@ -465,15 +538,31 @@ void Application::init_graphics_pipeline() {
 void Application::render() {
     auto current_frame_data = get_current_frame();
 
-    vkWaitForFences(device_, 1, &current_frame_data.render_fence_, true, 1000000000);
-    vkResetFences(device_, 1, &current_frame_data.render_fence_);
+	glm::vec3 camPos = { 0.f,-6.f,-10.f };
+    glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, -1.f, 0.f));
+	glm::mat4 projection = glm::perspective(glm::radians(70.f), 800.f / 600.f, 0.1f, 200.0f);
+	projection[1][1] *= -1;
+
+	GPUCameraData cam_data = {
+        .proj = projection,
+        .view = view,
+        .viewproj = projection * view,
+    };
+
+	void* data;
+	vmaMapMemory(allocator_, current_frame_data.camera_buffer.allocation, &data);
+	memcpy(data, &cam_data, sizeof(GPUCameraData));
+	vmaUnmapMemory(allocator_, current_frame_data.camera_buffer.allocation);
+
+    vkWaitForFences(device_, 1, &current_frame_data.render_fence, true, 1000000000);
+    vkResetFences(device_, 1, &current_frame_data.render_fence);
 
     uint32_t swapchain_image_index = 0;
-    vkAcquireNextImageKHR(device_, swapchain_, 1000000000, current_frame_data.present_semaphore_, nullptr, &swapchain_image_index);
+    vkAcquireNextImageKHR(device_, swapchain_, 1000000000, current_frame_data.present_semaphore, nullptr, &swapchain_image_index);
     
-    vkResetCommandBuffer(current_frame_data.command_buffer_, 0);
+    vkResetCommandBuffer(current_frame_data.command_buffer, 0);
 
-    const VkCommandBuffer cmd = current_frame_data.command_buffer_;
+    const VkCommandBuffer cmd = current_frame_data.command_buffer;
 
     const VkCommandBufferBeginInfo cmd_begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -505,9 +594,11 @@ void Application::render() {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_);
 
     VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(cmd, 0, 1, &terrain_mesh_.vertex_buffer_.buffer_, &offset);
+    vkCmdBindVertexBuffers(cmd, 0, 1, &terrain_mesh_.vertex_buffer_.buffer, &offset);
 
-    vkCmdBindIndexBuffer(cmd, terrain_mesh_.index_buffer_.buffer_, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(cmd, terrain_mesh_.index_buffer_.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout_, 0, 1, &current_frame_data.global_descriptor, 0, nullptr);
 
     vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(terrain_mesh_.indices_.size()), 1, 0, 0, 0);
 
@@ -522,22 +613,22 @@ void Application::render() {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = nullptr,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &current_frame_data.present_semaphore_, 
+        .pWaitSemaphores = &current_frame_data.present_semaphore, 
         .pWaitDstStageMask = &wait_stage,
         .commandBufferCount = 1,
-        .pCommandBuffers = &current_frame_data.command_buffer_,
+        .pCommandBuffers = &current_frame_data.command_buffer,
         .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &current_frame_data.render_semaphore_,
+        .pSignalSemaphores = &current_frame_data.render_semaphore,
     };
 
-    vkQueueSubmit(graphics_queue_, 1, &submit_info, current_frame_data.render_fence_);
+    vkQueueSubmit(graphics_queue_, 1, &submit_info, current_frame_data.render_fence);
 
     const VkPresentInfoKHR present_info = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext = nullptr,
         .pSwapchains = &swapchain_,
         .swapchainCount = 1,
-        .pWaitSemaphores = &current_frame_data.render_semaphore_,
+        .pWaitSemaphores = &current_frame_data.render_semaphore,
         .waitSemaphoreCount = 1,
         .pImageIndices = &swapchain_image_index,
     };
@@ -564,49 +655,18 @@ void Application::load_mesh() {
 }
 
 void Application::upload_mesh(Mesh& mesh) {
-    {
-    //vertex buffer
-    const VkBufferCreateInfo vertex_buffer_create_info = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size = mesh.vertices_.size() * sizeof(Vertex),
+
+    mesh.vertex_buffer_ = create_buffer_from_data({
+        .alloc_size = mesh.vertices_.size() * sizeof(Vertex),
         .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-    };
+        .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+    }, mesh.vertices_.data());
 
-    const VmaAllocationCreateInfo allocation_info = {
-        .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-    };
-
-    VK_CHECK(vmaCreateBuffer(allocator_, &vertex_buffer_create_info, &allocation_info, &mesh.vertex_buffer_.buffer_, 
-                            &mesh.vertex_buffer_.allocation_, nullptr));
-
-    void* vertex_data;
-	vmaMapMemory(allocator_, mesh.vertex_buffer_.allocation_, &vertex_data);
-	memcpy(vertex_data, mesh.vertices_.data(), mesh.vertices_.size() * sizeof(Vertex));
-	vmaUnmapMemory(allocator_, mesh.vertex_buffer_.allocation_);
-
-    }
-
-    {
-    //index buffer
-    const VkBufferCreateInfo index_buffer_create_info = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size = mesh.indices_.size() * sizeof(std::uint32_t),
+    mesh.index_buffer_ = create_buffer_from_data({
+        .alloc_size = mesh.indices_.size() * sizeof(std::uint32_t),
         .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-    };
-
-    const VmaAllocationCreateInfo allocation_info = {
-        .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-    };
-
-    VK_CHECK(vmaCreateBuffer(allocator_, &index_buffer_create_info, &allocation_info, &mesh.index_buffer_.buffer_, 
-                            &mesh.index_buffer_.allocation_, nullptr));
-
-    void* index_data;
-	vmaMapMemory(allocator_, mesh.index_buffer_.allocation_, &index_data);
-	memcpy(index_data, mesh.indices_.data(), mesh.indices_.size() * sizeof(std::uint32_t));
-	vmaUnmapMemory(allocator_, mesh.index_buffer_.allocation_);
-
-    }
+        .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+    }, mesh.indices_.data());
 }
 
 VkVertexInputBindingDescription Vertex::binding_description() {
@@ -649,4 +709,30 @@ std::vector<VkVertexInputAttributeDescription> Vertex::attributes_description() 
 
 FrameData& Application::get_current_frame() {
     return frame_data_[frame_number_ % frames_in_flight];
+}
+
+AllocatedBuffer Application::create_buffer(const BufferCreateInfo& buffer_create_info) {
+	VkBufferCreateInfo buffer_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext = nullptr,
+        .size = buffer_create_info.alloc_size,
+        .usage = buffer_create_info.usage,
+    };
+
+	VmaAllocationCreateInfo vmaalloc_info = {.usage = buffer_create_info.memory_usage,};
+
+	AllocatedBuffer new_buffer;
+
+	VK_CHECK(vmaCreateBuffer(allocator_, &buffer_info, &vmaalloc_info, &new_buffer.buffer, &new_buffer.allocation, nullptr));
+
+	return new_buffer;
+}
+
+AllocatedBuffer Application::create_buffer_from_data(const BufferCreateInfo& buffer_create_info, void* data) {
+    AllocatedBuffer buffer = create_buffer(buffer_create_info);
+    void* mapped_mem = nullptr;
+	vmaMapMemory(allocator_, buffer.allocation, &mapped_mem);
+	memcpy(mapped_mem, data, buffer_create_info.alloc_size);
+	vmaUnmapMemory(allocator_, buffer.allocation);
+    return buffer; 
 }

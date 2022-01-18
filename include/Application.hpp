@@ -8,7 +8,8 @@
 #include "vk_mem_alloc.h"
 
 #include <fmt/core.h>
-#include <glm/vec3.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtx/transform.hpp>
 
 #include <iostream>
 #include <vector>
@@ -21,25 +22,41 @@
         if(err) { fmt::print("Vulkan error {}", err); } \
     } while(0)                                          \
 
-struct FrameData {
-    VkSemaphore render_semaphore_{};
-    VkSemaphore present_semaphore_{};
-    VkFence render_fence_{};
-
-    VkCommandPool command_pool_{};
-    VkCommandBuffer command_buffer_{};
-};
 
 constexpr std::uint32_t frames_in_flight = 2;
 
+struct GPUCameraData{
+	glm::mat4 view;
+	glm::mat4 proj;
+	glm::mat4 viewproj;
+};
+
 struct AllocatedBuffer {
-    VkBuffer buffer_;
-    VmaAllocation allocation_;
+    VkBuffer buffer;
+    VmaAllocation allocation;
 };
 
 struct AllocatedImage {
-    VkImage image_;
-    VmaAllocation allocation_;
+    VkImage image;
+    VmaAllocation allocation;
+};
+
+struct FrameData {
+    VkSemaphore render_semaphore{};
+    VkSemaphore present_semaphore{};
+    VkFence render_fence{};
+
+    VkCommandPool command_pool{};
+    VkCommandBuffer command_buffer{};
+
+    AllocatedBuffer camera_buffer{};
+	VkDescriptorSet global_descriptor{};
+};
+
+struct BufferCreateInfo {
+    size_t alloc_size = 0;
+    VkBufferUsageFlags usage = 0;
+    VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_UNKNOWN;
 };
 
 struct Vertex {
@@ -92,6 +109,9 @@ class Application {
     AllocatedImage depth_image_{};
     VkFormat depth_image_format_{};
 
+    VkDescriptorSetLayout global_descriptor_set_layout_;
+    VkDescriptorPool descriptor_pool_;
+
     Mesh terrain_mesh_{};
 
 public:
@@ -107,12 +127,15 @@ private:
     void init_renderpass();
     void init_framebuffer();
     void init_sync_structures();
+    void init_descriptors();
     void init_graphics_pipeline();
 
     std::vector<char> readFile(const std::string& filename);
     VkShaderModule createShaderModule(const std::vector<char>& code);
 
     FrameData& get_current_frame();
+    AllocatedBuffer create_buffer(const BufferCreateInfo& buffer_create_info);
+    AllocatedBuffer create_buffer_from_data(const BufferCreateInfo& buffer_create_info, void* data);
 
     void render();
     void load_mesh();
