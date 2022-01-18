@@ -7,6 +7,8 @@
 #include "VkBootstrap.h"
 #include "vk_mem_alloc.h"
 
+#include "Camera.hpp"
+
 #include <fmt/core.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
@@ -114,11 +116,15 @@ class Application {
 
     Mesh terrain_mesh_{};
 
+    Camera cam_;
+
 public:
     Application();
     ~Application();
 
     void run();
+
+    void update_camera_position(int key);
 
 private:
     void init_vk_device();

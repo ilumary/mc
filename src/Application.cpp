@@ -1,5 +1,33 @@
 #include "../include/Application.hpp"
 
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    auto* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
+
+    if(action == GLFW_PRESS || action == GLFW_REPEAT) {
+        app->update_camera_position(key);
+    } 
+}
+
+void Application::update_camera_position(int key) {
+    if( key == GLFW_KEY_W) {
+        cam_.keys.up = true;
+        cam_.update(0.1f);
+        cam_.keys.up = false;
+    } else if( key == GLFW_KEY_A) {
+        cam_.keys.left = true;
+        cam_.update(0.1f);
+        cam_.keys.left = false;
+    } else if( key == GLFW_KEY_S) {
+        cam_.keys.down = true;
+        cam_.update(0.1f);
+        cam_.keys.down = false;
+    } else if( key == GLFW_KEY_D) {
+        cam_.keys.right = true;
+        cam_.update(0.1f);
+        cam_.keys.right = false;
+    }
+}
+
 Application::Application() {
     if (!glfwInit()) { std::exit(1); }
     fmt::print("GLFW initialised\n");
@@ -11,8 +39,15 @@ Application::Application() {
     
     window_ = glfwCreateWindow(window_extent_.width, window_extent_.height, "Voxel Simulation", nullptr, nullptr);
     if(!window_) { std::exit(1); }
-    
+
+    cam_.setPosition({ 0.f, 0.f,-2.f });
+    cam_.setPerspective(70.f, 800.f / 600.f, 0.1f, 200.f);
+    cam_.type = Camera::CameraType::firstperson;
+
     glfwMakeContextCurrent(window_);
+    glfwSetWindowUserPointer(window_, this);
+    glfwSetKeyCallback(window_, key_callback);
+    
 
     init_vk_device();
     init_swapchain();
@@ -538,15 +573,10 @@ void Application::init_graphics_pipeline() {
 void Application::render() {
     auto current_frame_data = get_current_frame();
 
-	glm::vec3 camPos = { 0.f,-6.f,-10.f };
-    glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, -1.f, 0.f));
-	glm::mat4 projection = glm::perspective(glm::radians(70.f), 800.f / 600.f, 0.1f, 200.0f);
-	projection[1][1] *= -1;
-
 	GPUCameraData cam_data = {
-        .proj = projection,
-        .view = view,
-        .viewproj = projection * view,
+        .proj = cam_.matrices.perspective,
+        .view = cam_.matrices.view,
+        .viewproj = cam_.matrices.perspective * cam_.matrices.view,
     };
 
 	void* data;
