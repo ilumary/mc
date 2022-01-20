@@ -116,7 +116,7 @@ class Application {
 
     Mesh terrain_mesh_{};
 
-    
+    Camera cam_;
 
     bool mouse_dragging_{false};
     float last_mouse_pos_x_{};
@@ -125,8 +125,6 @@ class Application {
 public:
     Application();
     ~Application();
-
-    Camera cam_;
 
     void run();
 
