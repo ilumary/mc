@@ -9,6 +9,7 @@
 
 #include "Camera.hpp"
 #include "MarchingCubes.hpp"
+#include "Window.hpp"
 
 #include <fmt/core.h>
 #include <glm/glm.hpp>
@@ -71,7 +72,7 @@ struct Mesh {
 
 class Application {
 
-    GLFWwindow* window_ = nullptr;
+    Window* window_;
     VkExtent2D window_extent_{};
 
     VkDebugUtilsMessengerEXT debug_messenger_{};

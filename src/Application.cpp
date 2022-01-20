@@ -53,26 +53,18 @@ void Application::update_camera_position(int key) {
 }
 
 Application::Application() {
-    if (!glfwInit()) { std::exit(1); }
-    fmt::print("GLFW initialised\n");
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    
     window_extent_ = VkExtent2D{800, 600};
-    
-    window_ = glfwCreateWindow(window_extent_.width, window_extent_.height, "Voxel Simulation", nullptr, nullptr);
-    if(!window_) { std::exit(1); }
+    window_ = new Window(window_extent_.width, window_extent_.height, "Voxel Simulation");
 
     cam_.setPosition({ 0.f, 0.f,-2.f });
     cam_.setPerspective(70.f, 800.f / 600.f, 0.1f, 200.f);
     cam_.type = Camera::CameraType::firstperson;
 
-    glfwMakeContextCurrent(window_);
-    glfwSetWindowUserPointer(window_, this);
-    glfwSetKeyCallback(window_, key_callback);
-    glfwSetCursorPosCallback(window_, cursor_position_callback);
-    glfwSetMouseButtonCallback(window_, mouse_button_callback);
+    glfwMakeContextCurrent(window_->glfw_window());
+    glfwSetWindowUserPointer(window_->glfw_window(), this);
+    glfwSetKeyCallback(window_->glfw_window(), key_callback);
+    glfwSetCursorPosCallback(window_->glfw_window(), cursor_position_callback);
+    glfwSetMouseButtonCallback(window_->glfw_window(), mouse_button_callback);
 
     init_vk_device();
     init_swapchain();
@@ -123,15 +115,13 @@ Application::~Application() {
     vkb::destroy_debug_utils_messenger(instance_, debug_messenger_, nullptr);
     vkDestroyInstance(instance_, nullptr);
 
-    glfwDestroyWindow(window_);
-    glfwTerminate();
 }
 
 void Application::run() {
-    while (!glfwWindowShouldClose(window_)) {
+    while (!window_->should_close()) {
         render();
-        glfwSwapBuffers(window_);
-        glfwPollEvents();
+        window_->swap_buffers();
+        window_->pull_events();
     }
 }
 
@@ -143,7 +133,7 @@ void Application::init_vk_device() {
     }
         
     instance_ = instance_ret->instance;
-    glfwCreateWindowSurface(instance_, window_, nullptr, &surface_);
+    glfwCreateWindowSurface(instance_, window_->glfw_window(), nullptr, &surface_);
     debug_messenger_ = instance_ret->debug_messenger;
 
     vkb::PhysicalDeviceSelector phys_device_selector(instance_ret.value());
