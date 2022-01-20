@@ -35,19 +35,19 @@ void Application::process_mouse_motion(float x, float y) {
 void Application::update_camera_position(int key) {
     if( key == GLFW_KEY_W) {
         cam_.keys.up = true;
-        cam_.update(0.1f);
+        cam_.update(0.5f);
         cam_.keys.up = false;
     } else if( key == GLFW_KEY_A) {
         cam_.keys.left = true;
-        cam_.update(0.1f);
+        cam_.update(0.5f);
         cam_.keys.left = false;
     } else if( key == GLFW_KEY_S) {
         cam_.keys.down = true;
-        cam_.update(0.1f);
+        cam_.update(0.5f);
         cam_.keys.down = false;
     } else if( key == GLFW_KEY_D) {
         cam_.keys.right = true;
-        cam_.update(0.1f);
+        cam_.update(0.5f);
         cam_.keys.right = false;
     }
 }
@@ -86,7 +86,7 @@ Application::Application() {
 }
 
 Application::~Application() {
-    vmaDestroyBuffer(allocator_, terrain_mesh_.index_buffer_.buffer, terrain_mesh_.index_buffer_.allocation);
+    //vmaDestroyBuffer(allocator_, terrain_mesh_.index_buffer_.buffer, terrain_mesh_.index_buffer_.allocation);
     vmaDestroyBuffer(allocator_, terrain_mesh_.vertex_buffer_.buffer, terrain_mesh_.vertex_buffer_.allocation);
 
     vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
@@ -525,7 +525,7 @@ void Application::init_graphics_pipeline() {
         .rasterizerDiscardEnable = VK_FALSE,
         .polygonMode = VK_POLYGON_MODE_FILL,
         .lineWidth = 1.0f,
-        .cullMode = VK_CULL_MODE_BACK_BIT,
+        .cullMode = VK_CULL_MODE_NONE,
         .frontFace = VK_FRONT_FACE_CLOCKWISE,
         .depthBiasEnable = VK_FALSE,
     };
@@ -651,13 +651,13 @@ void Application::render() {
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cmd, 0, 1, &terrain_mesh_.vertex_buffer_.buffer, &offset);
 
-    vkCmdBindIndexBuffer(cmd, terrain_mesh_.index_buffer_.buffer, 0, VK_INDEX_TYPE_UINT32);
+    //vkCmdBindIndexBuffer(cmd, terrain_mesh_.index_buffer_.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout_, 0, 1, &current_frame_data.global_descriptor, 0, nullptr);
 
-    vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(terrain_mesh_.indices_.size()), 1, 0, 0, 0);
+    //vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(terrain_mesh_.indices_.size()), 1, 0, 0, 0);
 
-    //vkCmdDraw(cmd, static_cast<std::uint32_t>(terrain_mesh_.vertices_.size()), 1, 0, 0);
+    vkCmdDraw(cmd, static_cast<std::uint32_t>(terrain_mesh_.vertices_.size()), 1, 0, 0);
 
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
@@ -694,7 +694,12 @@ void Application::render() {
 }
 
 void Application::load_mesh() {
-    terrain_mesh_.vertices_.resize(3);
+
+    //std::vector<Vertex> vertices = generate_terrain();
+
+    terrain_mesh_.vertices_ = generate_terrain();
+
+    /*terrain_mesh_.vertices_.resize(3);
 
     terrain_mesh_.vertices_[0].position = {0.7f, 0.7f, 0.0f};
     terrain_mesh_.vertices_[1].position = {-0.7f, 0.7f, 0.0f};
@@ -702,64 +707,26 @@ void Application::load_mesh() {
 
     terrain_mesh_.vertices_[0].color = {1.f, 0.f, 0.0f};
     terrain_mesh_.vertices_[1].color = {0.f, 1.f, 0.0f};
-    terrain_mesh_.vertices_[2].color = {0.f, 0.f, 1.0f};
+    terrain_mesh_.vertices_[2].color = {0.f, 0.f, 1.0f};*/
 
-    terrain_mesh_.indices_ = {0, 1, 2};
+    //terrain_mesh_.indices_ = {0, 1, 2};
 
     upload_mesh(terrain_mesh_);
 }
 
 void Application::upload_mesh(Mesh& mesh) {
-
+    
     mesh.vertex_buffer_ = create_buffer_from_data({
         .alloc_size = mesh.vertices_.size() * sizeof(Vertex),
         .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
     }, mesh.vertices_.data());
 
-    mesh.index_buffer_ = create_buffer_from_data({
+    /*mesh.index_buffer_ = create_buffer_from_data({
         .alloc_size = mesh.indices_.size() * sizeof(std::uint32_t),
         .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-    }, mesh.indices_.data());
-}
-
-VkVertexInputBindingDescription Vertex::binding_description() {
-    return VkVertexInputBindingDescription {
-        .binding = 0,
-        .stride = sizeof(Vertex),
-        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
-    };
-}
-
-std::vector<VkVertexInputAttributeDescription> Vertex::attributes_description() {
-    std::vector<VkVertexInputAttributeDescription> attributes;
-    
-	VkVertexInputAttributeDescription positionAttribute = {
-        .binding = 0,
-        .location = 0,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(Vertex, position),
-    };
-
-	VkVertexInputAttributeDescription normalAttribute = {
-        .binding = 0,
-        .location = 1,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(Vertex, normal),
-    };
-
-	VkVertexInputAttributeDescription colorAttribute = {
-        .binding = 0,
-        .location = 2,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(Vertex, color),
-    };
-
-	attributes.push_back(positionAttribute);
-	attributes.push_back(normalAttribute);
-	attributes.push_back(colorAttribute);
-	return attributes;
+    }, mesh.indices_.data());*/
 }
 
 FrameData& Application::get_current_frame() {
@@ -791,5 +758,3 @@ AllocatedBuffer Application::create_buffer_from_data(const BufferCreateInfo& buf
 	vmaUnmapMemory(allocator_, buffer.allocation);
     return buffer; 
 }
-
-//8:13:00

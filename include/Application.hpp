@@ -8,6 +8,7 @@
 #include "vk_mem_alloc.h"
 
 #include "Camera.hpp"
+#include "MarchingCubes.hpp"
 
 #include <fmt/core.h>
 #include <glm/glm.hpp>
@@ -59,15 +60,6 @@ struct BufferCreateInfo {
     size_t alloc_size = 0;
     VkBufferUsageFlags usage = 0;
     VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_UNKNOWN;
-};
-
-struct Vertex {
-    glm::vec3 position;
-    glm::vec3 normal;
-    glm::vec3 color;
-
-    static VkVertexInputBindingDescription binding_description();
-    static std::vector<VkVertexInputAttributeDescription> attributes_description();
 };
 
 struct Mesh {
