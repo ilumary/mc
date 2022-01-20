@@ -4,7 +4,7 @@ mc is my take on the always popular minecraft clones and a follow-up to my last 
 
 ## Features (as of now)
 
-- Fully functional vulkan render bakend
+- Fully functional vulkan render backend
 - First-Person Camera with typical wasd controls 
 - Implementation of the marching cubes algorithm
 
