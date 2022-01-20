@@ -116,15 +116,30 @@ class Application {
 
     Mesh terrain_mesh_{};
 
-    Camera cam_;
+    
+
+    bool mouse_dragging_{false};
+    float last_mouse_pos_x_{};
+    float last_mouse_pos_y_{};
 
 public:
     Application();
     ~Application();
 
+    Camera cam_;
+
     void run();
 
     void update_camera_position(int key);
+
+    void process_mouse_motion(float x, float y);
+
+    void mouse_dragging(bool is_dragging) { 
+        mouse_dragging_ = is_dragging; 
+        last_mouse_pos_y_ = static_cast<float>(window_extent_.height); 
+        last_mouse_pos_x_ = static_cast<float>(window_extent_.width);
+    }
+    bool is_mouse_dragging() const { return mouse_dragging_; }
 
 private:
     void init_vk_device();

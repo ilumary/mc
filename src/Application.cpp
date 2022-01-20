@@ -8,6 +8,30 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     } 
 }
 
+static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+    auto* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
+    if(app->is_mouse_dragging()) {
+        app->process_mouse_motion(static_cast<float>(xpos), static_cast<float>(ypos));
+    }
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    auto* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
+    if(button == GLFW_MOUSE_BUTTON_RIGHT) {
+        if(action == GLFW_PRESS) {
+            app->mouse_dragging(true);
+        } else if (action == GLFW_RELEASE) {
+            app->mouse_dragging(false);
+        }
+    }
+}
+
+void Application::process_mouse_motion(float x, float y) {
+    cam_.rotate(glm::vec3{(y - last_mouse_pos_y_) * 0.1f, (x - last_mouse_pos_x_) * 0.1f, 0.0f});
+    last_mouse_pos_x_ = x;
+    last_mouse_pos_y_ = y;
+}
+
 void Application::update_camera_position(int key) {
     if( key == GLFW_KEY_W) {
         cam_.keys.up = true;
@@ -47,7 +71,8 @@ Application::Application() {
     glfwMakeContextCurrent(window_);
     glfwSetWindowUserPointer(window_, this);
     glfwSetKeyCallback(window_, key_callback);
-    
+    glfwSetCursorPosCallback(window_, cursor_position_callback);
+    glfwSetMouseButtonCallback(window_, mouse_button_callback);
 
     init_vk_device();
     init_swapchain();
@@ -766,3 +791,5 @@ AllocatedBuffer Application::create_buffer_from_data(const BufferCreateInfo& buf
 	vmaUnmapMemory(allocator_, buffer.allocation);
     return buffer; 
 }
+
+//8:13:00
