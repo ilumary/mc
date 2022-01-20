@@ -6,11 +6,11 @@ mc is my take on the always popular minecraft clones and a follow-up to my last 
 
 - Fully functional vulkan render bakend
 - First-Person Camera with typical wasd controls 
+- Implementation of the marching cubes algorithm
 
 Planned: 
 
 - Refactor code! 
-- Implement the marching cubes algorithm
 - Get some terrain to generate 
 - Add placing/destruction of blocks
 - Divide terrain into chunks with dynamic loading/unloading
