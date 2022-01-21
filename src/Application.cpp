@@ -53,11 +53,11 @@ void Application::update_camera_position(int key) {
 }
 
 Application::Application() {
-    window_extent_ = VkExtent2D{800, 600};
+    window_extent_ = VkExtent2D{1400, 900};
     window_ = new Window(window_extent_.width, window_extent_.height, "Voxel Simulation");
 
     cam_.setPosition({ 0.f, 0.f,-2.f });
-    cam_.setPerspective(70.f, 800.f / 600.f, 0.1f, 200.f);
+    cam_.setPerspective(70.f, 1400.f / 900.f, 0.1f, 200.f);
     cam_.type = Camera::CameraType::firstperson;
 
     glfwMakeContextCurrent(window_->glfw_window());
@@ -78,7 +78,7 @@ Application::Application() {
 }
 
 Application::~Application() {
-    //vmaDestroyBuffer(allocator_, terrain_mesh_.index_buffer_.buffer, terrain_mesh_.index_buffer_.allocation);
+    vmaDestroyBuffer(allocator_, terrain_mesh_.index_buffer_.buffer, terrain_mesh_.index_buffer_.allocation);
     vmaDestroyBuffer(allocator_, terrain_mesh_.vertex_buffer_.buffer, terrain_mesh_.vertex_buffer_.allocation);
 
     vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
@@ -640,13 +640,13 @@ void Application::render() {
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cmd, 0, 1, &terrain_mesh_.vertex_buffer_.buffer, &offset);
 
-    //vkCmdBindIndexBuffer(cmd, terrain_mesh_.index_buffer_.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(cmd, terrain_mesh_.index_buffer_.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout_, 0, 1, &current_frame_data.global_descriptor, 0, nullptr);
 
-    //vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(terrain_mesh_.indices_.size()), 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(terrain_mesh_.indices_.size()), 1, 0, 0, 0);
 
-    vkCmdDraw(cmd, static_cast<std::uint32_t>(terrain_mesh_.vertices_.size()), 1, 0, 0);
+    //vkCmdDraw(cmd, static_cast<std::uint32_t>(terrain_mesh_.vertices_.size()), 1, 0, 0);
 
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
@@ -683,23 +683,8 @@ void Application::render() {
 }
 
 void Application::load_mesh() {
-
-    //std::vector<Vertex> vertices = generate_terrain();
-
     terrain_mesh_.vertices_ = generate_terrain();
-
-    /*terrain_mesh_.vertices_.resize(3);
-
-    terrain_mesh_.vertices_[0].position = {0.7f, 0.7f, 0.0f};
-    terrain_mesh_.vertices_[1].position = {-0.7f, 0.7f, 0.0f};
-    terrain_mesh_.vertices_[2].position = {0.f, -0.7f, 0.0f};
-
-    terrain_mesh_.vertices_[0].color = {1.f, 0.f, 0.0f};
-    terrain_mesh_.vertices_[1].color = {0.f, 1.f, 0.0f};
-    terrain_mesh_.vertices_[2].color = {0.f, 0.f, 1.0f};*/
-
-    //terrain_mesh_.indices_ = {0, 1, 2};
-
+    terrain_mesh_.indices_ = generate_indices();
     upload_mesh(terrain_mesh_);
 }
 
@@ -711,11 +696,11 @@ void Application::upload_mesh(Mesh& mesh) {
         .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
     }, mesh.vertices_.data());
 
-    /*mesh.index_buffer_ = create_buffer_from_data({
+    mesh.index_buffer_ = create_buffer_from_data({
         .alloc_size = mesh.indices_.size() * sizeof(std::uint32_t),
         .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-    }, mesh.indices_.data());*/
+    }, mesh.indices_.data());
 }
 
 FrameData& Application::get_current_frame() {

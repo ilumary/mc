@@ -8,7 +8,7 @@
 #include "vk_mem_alloc.h"
 
 #include "Camera.hpp"
-#include "MarchingCubes.hpp"
+#include "Terrain.hpp"
 #include "Window.hpp"
 
 #include <fmt/core.h>
