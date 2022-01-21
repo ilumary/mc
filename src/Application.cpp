@@ -617,8 +617,7 @@ void Application::render() {
     };
     vkBeginCommandBuffer(cmd, &cmd_begin_info);
 
-    const float flash = std::abs(std::sin(static_cast<float>(frame_number_) / 120.f));
-    const VkClearValue clear_color_value = {.color = {{0.0f, 0.0f, flash, 1.0f}}};
+    const VkClearValue clear_color_value = {.color = {{0.0f, 0.72f, 1.0f, 1.0f}}};
     const VkClearValue clear_depth_value = {.depthStencil = {.depth = 1.f}};
     const VkClearValue clear_values[] = {clear_color_value, clear_depth_value};
 

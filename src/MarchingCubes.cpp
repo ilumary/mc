@@ -59,14 +59,10 @@ std::vector<Triangle> polygonise(Gridcell grid, double isolevel) {
     std::vector<Triangle> triangles;
     for (int i = 0; tri_table[cubeindex][i] != -1; i += 3) {
         triangles.push_back(Triangle{.p_v = {
-            Vertex{.position = vertlist[tri_table[cubeindex][i]], .normal = {0.f, 0.f, 1.f}, .color = {0.f, 1.f, 0.f}},
-            Vertex{.position = vertlist[tri_table[cubeindex][i + 1]], .normal = {0.f, 0.f, 1.f}, .color = {1.f, 0.f, 0.f}},
-            Vertex{.position = vertlist[tri_table[cubeindex][i + 2]], .normal = {0.f, 0.f, 1.f}, .color = {0.f, 0.f, 1.f}},
+            Vertex{.position = vertlist[tri_table[cubeindex][i]], .normal = {0.f, 0.f, 1.f}},
+            Vertex{.position = vertlist[tri_table[cubeindex][i + 1]], .normal = {0.f, 0.f, 1.f}},
+            Vertex{.position = vertlist[tri_table[cubeindex][i + 2]], .normal = {0.f, 0.f, 1.f}},
         }});
-
-        //triangles[ntriang].p[0] = vertlist[tri_table[cubeindex][i]];
-        //triangles[ntriang].p[1] = vertlist[tri_table[cubeindex][i + 1]];
-        //triangles[ntriang].p[2] = vertlist[tri_table[cubeindex][i + 2]];
     }
     return triangles;
 }
@@ -102,7 +98,7 @@ std::vector<Vertex> generate_terrain() {
     Gridcell cell;
     for(int i = 0; i < 8; ++i) {
         cell.p[i] = corners[i];
-        cell.val[i] = std::sin(static_cast<float>(i));
+        cell.val[i] = std::cos(static_cast<float>(i));
     }
 
     auto triangles = polygonise(cell, 0);
@@ -141,15 +137,7 @@ std::vector<VkVertexInputAttributeDescription> Vertex::attributes_description() 
         .offset = offsetof(Vertex, normal),
     };
 
-	VkVertexInputAttributeDescription colorAttribute = {
-        .binding = 0,
-        .location = 2,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(Vertex, color),
-    };
-
 	attributes.push_back(positionAttribute);
 	attributes.push_back(normalAttribute);
-	attributes.push_back(colorAttribute);
 	return attributes;
 }
