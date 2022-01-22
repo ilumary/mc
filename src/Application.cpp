@@ -68,8 +68,7 @@ Application::Application() {
     glfwSetCursorPosCallback(window_->glfw_window(), cursor_position_callback);
     glfwSetMouseButtonCallback(window_->glfw_window(), mouse_button_callback);
 
-    //init_vk_device();
-    init_swapchain();
+    init_depthbuffer();
     init_command();
     init_renderpass();
     init_framebuffer();
@@ -115,8 +114,7 @@ void Application::run() {
     }
 }
 
-void Application::init_swapchain() {
-
+void Application::init_depthbuffer() {
     depth_image_format_ = VK_FORMAT_D32_SFLOAT;
 
     const VkExtent3D depth_extent = {window_extent_.width, window_extent_.height, 1};
@@ -348,56 +346,21 @@ void Application::init_descriptors() {
     }
 }
 
-std::vector<char> Application::readFile(const std::string& filename) {
-	std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-	if (!file.is_open()) {
-		throw std::runtime_error ("failed to open file!");
-	}
-
-	size_t file_size = (size_t)file.tellg ();
-	std::vector<char> buffer(file_size);
-
-	file.seekg(0);
-	file.read(buffer.data(), static_cast<std::streamsize>(file_size));
-
-	file.close();
-
-	return buffer;
-}
-
-VkShaderModule Application::createShaderModule(const std::vector<char>& code) {
-	VkShaderModuleCreateInfo create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	create_info.codeSize = code.size ();
-	create_info.pCode = reinterpret_cast<const uint32_t*> (code.data ());
-
-	VkShaderModule shaderModule;
-	if (vkCreateShaderModule(vk_core_->device(), &create_info, nullptr, &shaderModule) != VK_SUCCESS) {
-		return VK_NULL_HANDLE; 
-	}
-
-	return shaderModule;
-}
-
 void Application::init_graphics_pipeline() {
-    auto vert_shader_code = readFile("../../shaders/bin/vert.spv");
-    auto frag_shader_code = readFile("../../shaders/bin/frag.spv");
-
-    VkShaderModule vert_shader_module = createShaderModule(vert_shader_code);
-    VkShaderModule frag_shader_module = createShaderModule(frag_shader_code);
+    vkc::ShaderModule* vert_shader_module = new vkc::ShaderModule(*vk_core_, "../../shaders/bin/vert.spv");
+    vkc::ShaderModule* frag_shader_module = new vkc::ShaderModule(*vk_core_, "../../shaders/bin/frag.spv");
 
     VkPipelineShaderStageCreateInfo vert_shader_stage_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_VERTEX_BIT,
-        .module = vert_shader_module,
+        .module = vert_shader_module->shader_module(),
         .pName = "main",
     };
 
     VkPipelineShaderStageCreateInfo frag_shader_stage_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-        .module = frag_shader_module,
+        .module = frag_shader_module->shader_module(),
         .pName = "main",
     };
 
@@ -405,76 +368,6 @@ void Application::init_graphics_pipeline() {
 
     static const auto vertex_binding_description = Vertex::binding_description();
     static const auto vertex_attributes_description = Vertex::attributes_description();
-
-    VkPipelineVertexInputStateCreateInfo vertex_input_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &vertex_binding_description,
-        .vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attributes_description.size()),
-        .pVertexAttributeDescriptions = vertex_attributes_description.data(),
-    };
-    
-    VkPipelineInputAssemblyStateCreateInfo input_assembly = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-        .primitiveRestartEnable = VK_FALSE,
-    };
-    
-
-    VkViewport viewport = {
-        .x = 0.0f,
-        .y = 0.0f,
-        .width = (float) window_extent_.width,
-        .height = (float) window_extent_.height,
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f,
-    };
-    
-    VkRect2D scissor = {
-        .offset = {0, 0},
-        .extent = window_extent_,
-    };
-
-    VkPipelineViewportStateCreateInfo viewport_state = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .viewportCount = 1,
-        .pViewports = &viewport,
-        .scissorCount = 1,
-        .pScissors = &scissor,
-    };
-    
-
-    VkPipelineRasterizationStateCreateInfo rasterizer = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-        .depthClampEnable = VK_FALSE,
-        .rasterizerDiscardEnable = VK_FALSE,
-        .polygonMode = VK_POLYGON_MODE_FILL,
-        .lineWidth = 1.0f,
-        .cullMode = VK_CULL_MODE_BACK_BIT,
-        .frontFace = VK_FRONT_FACE_CLOCKWISE,
-        .depthBiasEnable = VK_FALSE,
-    };
-
-    VkPipelineMultisampleStateCreateInfo multisampling = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-        .sampleShadingEnable = VK_FALSE,
-        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
-    };
-
-    VkPipelineColorBlendAttachmentState colorBlendAttachment = {
-        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-        .blendEnable = VK_FALSE,
-    };
-    
-
-    VkPipelineColorBlendStateCreateInfo color_blending = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-        .logicOpEnable = VK_FALSE,
-        .logicOp = VK_LOGIC_OP_COPY,
-        .attachmentCount = 1,
-        .pAttachments = &colorBlendAttachment,
-        .blendConstants = {0.0f, 0.0f, 0.0f, 0.0f},
-    };
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -485,39 +378,22 @@ void Application::init_graphics_pipeline() {
 
     VK_CHECK(vkCreatePipelineLayout(vk_core_->device(), &pipelineLayoutInfo, nullptr, &graphics_pipeline_layout_));
 
-    const VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        .pNext = nullptr,
-        .depthTestEnable = VK_TRUE,
-        .depthWriteEnable = VK_TRUE,
-        .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
-        .depthBoundsTestEnable = VK_FALSE,
-        .stencilTestEnable = VK_FALSE,
-        .minDepthBounds = 0.0f, 
-        .maxDepthBounds = 1.0f,
+    VkPipelineVertexInputStateCreateInfo vertex_input_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &vertex_binding_description,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attributes_description.size()),
+        .pVertexAttributeDescriptions = vertex_attributes_description.data(),
     };
 
-    const VkGraphicsPipelineCreateInfo pipelineInfo = {
-        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .stageCount = 2,
-        .pStages = shader_stages,
-        .pVertexInputState = &vertex_input_info,
-        .pInputAssemblyState = &input_assembly,
-        .pViewportState = &viewport_state,
-        .pRasterizationState = &rasterizer,
-        .pMultisampleState = &multisampling,
-        .pDepthStencilState = &depth_stencil_info,
-        .pColorBlendState = &color_blending,
-        .layout = graphics_pipeline_layout_,
-        .renderPass = render_pass_,
-        .subpass = 0,
-        .basePipelineHandle = VK_NULL_HANDLE,
-    };
-
-    VK_CHECK(vkCreateGraphicsPipelines(vk_core_->device(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphics_pipeline_));
-
-    vkDestroyShaderModule(vk_core_->device(), frag_shader_module, nullptr);
-    vkDestroyShaderModule(vk_core_->device(), vert_shader_module, nullptr);
+    graphics_pipeline_ = vkc::create_graphics_pipeline(*vk_core_, vkc::GraphicsPipelineCreateInfo{
+        .pipeline_layout = graphics_pipeline_layout_,
+        .render_pass = render_pass_,
+        .window_extent = window_extent_,
+        .shader_stages = &shader_stages[0],
+        .shader_stage_count = 2,
+        .cull_mode = vkc::CullMode::back,
+    });
 }
 
 void Application::render() {

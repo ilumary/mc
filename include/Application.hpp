@@ -13,6 +13,8 @@
 #include "Core.hpp"
 #include "Buffer.hpp"
 #include "Swapchain.hpp"
+#include "ShaderModule.hpp"
+#include "GraphicsPipeline.hpp"
 
 #include <fmt/core.h>
 #include <glm/glm.hpp>
@@ -38,11 +40,6 @@ struct GPUCameraData {
 	glm::mat4 viewproj;
 };
 
-struct AllocatedBuffer {
-    VkBuffer buffer;
-    VmaAllocation allocation;
-};
-
 struct AllocatedImage {
     VkImage image;
     VmaAllocation allocation;
@@ -58,12 +55,6 @@ struct FrameData {
 
     vkc::AllocatedBuffer camera_buffer{};
 	VkDescriptorSet global_descriptor{};
-};
-
-struct BufferCreateInfo {
-    size_t alloc_size = 0;
-    VkBufferUsageFlags usage = 0;
-    VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_UNKNOWN;
 };
 
 struct Mesh {
@@ -117,13 +108,13 @@ public:
 
     void mouse_dragging(bool is_dragging) { 
         mouse_dragging_ = is_dragging; 
-        last_mouse_pos_y_ = static_cast<float>(window_extent_.height); 
-        last_mouse_pos_x_ = static_cast<float>(window_extent_.width);
+        last_mouse_pos_y_ = static_cast<float>(window_extent_.height / 2); 
+        last_mouse_pos_x_ = static_cast<float>(window_extent_.width / 2);
     }
     bool is_mouse_dragging() const { return mouse_dragging_; }
 
 private:
-    void init_swapchain();
+    void init_depthbuffer();
     void init_command();
     void init_renderpass();
     void init_framebuffer();
