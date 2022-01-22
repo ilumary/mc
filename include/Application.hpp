@@ -11,6 +11,8 @@
 #include "Terrain.hpp"
 #include "Window.hpp"
 #include "Core.hpp"
+#include "Buffer.hpp"
+#include "Swapchain.hpp"
 
 #include <fmt/core.h>
 #include <glm/glm.hpp>
@@ -54,7 +56,7 @@ struct FrameData {
     VkCommandPool command_pool{};
     VkCommandBuffer command_buffer{};
 
-    AllocatedBuffer camera_buffer{};
+    vkc::AllocatedBuffer camera_buffer{};
 	VkDescriptorSet global_descriptor{};
 };
 
@@ -67,8 +69,8 @@ struct BufferCreateInfo {
 struct Mesh {
     std::vector<Vertex> vertices_;
     std::vector<std::uint32_t> indices_;
-    AllocatedBuffer vertex_buffer_;
-    AllocatedBuffer index_buffer_;
+    vkc::AllocatedBuffer vertex_buffer_;
+    vkc::AllocatedBuffer index_buffer_;
 };
 
 class Application {
@@ -77,14 +79,11 @@ class Application {
     VkExtent2D window_extent_{}; 
 
     vkc::Core* vk_core_;
+    vkc::Swapchain* vk_swapchain_;
 
     VkRenderPass render_pass_{};
     std::vector<VkFramebuffer> framebuffers_{};
 
-    VkSwapchainKHR swapchain_{};
-    VkFormat swapchain_image_format_{};
-    std::vector<VkImage> swapchain_images_{};
-    std::vector<VkImageView> swapchain_image_views_{};
     FrameData frame_data_[frames_in_flight]{};
     uint32_t frame_number_ = 0;
 
@@ -136,8 +135,6 @@ private:
     VkShaderModule createShaderModule(const std::vector<char>& code);
 
     FrameData& get_current_frame();
-    AllocatedBuffer create_buffer(const BufferCreateInfo& buffer_create_info);
-    AllocatedBuffer create_buffer_from_data(const BufferCreateInfo& buffer_create_info, void* data);
 
     void render();
     void load_mesh();

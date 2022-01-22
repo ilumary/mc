@@ -56,6 +56,7 @@ Application::Application() {
     window_extent_ = VkExtent2D{1400, 900};
     window_ = new Window(window_extent_.width, window_extent_.height, "Voxel Simulation");
     vk_core_ = new vkc::Core(*window_);
+    vk_swapchain_ = new vkc::Swapchain(*vk_core_, window_extent_);
 
     cam_.setPosition({ 0.f, 0.f,-2.f });
     cam_.setPerspective(70.f, 1400.f / 900.f, 0.1f, 200.f);
@@ -102,12 +103,8 @@ Application::~Application() {
         vkDestroyFramebuffer(vk_core_->device(), framebuffer, nullptr);
     }
 
-    for(auto &image_view : swapchain_image_views_) {
-        vkDestroyImageView(vk_core_->device(), image_view, nullptr);
-    }
     vkDestroyImageView(vk_core_->device(), depth_image_view_, nullptr);
     vmaDestroyImage(vk_core_->allocator(), depth_image_.image, depth_image_.allocation);
-    vkDestroySwapchainKHR(vk_core_->device(), swapchain_, nullptr);
 }
 
 void Application::run() {
@@ -119,19 +116,6 @@ void Application::run() {
 }
 
 void Application::init_swapchain() {
-    vkb::SwapchainBuilder swapchain_builder{vk_core_->physical_device(), vk_core_->device(), vk_core_->surface()};
-    
-    vkb::Swapchain vkb_swapchain = swapchain_builder
-                                    .use_default_format_selection()
-                                    .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
-                                    .set_desired_extent(window_extent_.width, window_extent_.height)
-                                    .build()
-                                    .value();
-    
-    swapchain_ = vkb_swapchain.swapchain;
-    swapchain_images_ = vkb_swapchain.get_images().value();
-    swapchain_image_views_ = vkb_swapchain.get_image_views().value();
-    swapchain_image_format_ = vkb_swapchain.image_format;
 
     depth_image_format_ = VK_FORMAT_D32_SFLOAT;
 
@@ -201,7 +185,7 @@ void Application::init_command() {
 
 void Application::init_renderpass() {
     const VkAttachmentDescription color_attachment = {
-        .format = swapchain_image_format_,
+        .format = vk_swapchain_->format(),
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -266,11 +250,11 @@ void Application::init_framebuffer() {
         .layers = 1,
     };
     
-    const auto swapchain_imagecount = static_cast<std::uint32_t>(swapchain_images_.size());
+    const auto swapchain_imagecount = static_cast<std::uint32_t>(vk_swapchain_->images().size());
     framebuffers_ = std::vector<VkFramebuffer>(swapchain_imagecount);
 
     for(uint32_t i = 0; i < swapchain_imagecount; ++i) {
-        const VkImageView attachments[] = {swapchain_image_views_[i], depth_image_view_};
+        const VkImageView attachments[] = {vk_swapchain_->image_views()[i], depth_image_view_};
         framebuffer_create_info.pAttachments = &attachments[0];
         framebuffer_create_info.attachmentCount = 2;
         vkCreateFramebuffer(vk_core_->device(), &framebuffer_create_info, nullptr, &framebuffers_[i]);
@@ -328,7 +312,7 @@ void Application::init_descriptors() {
 	VK_CHECK(vkCreateDescriptorSetLayout(vk_core_->device(), &set_layout_info, nullptr, &global_descriptor_set_layout_));
 
     for (std::uint32_t i = 0; i < frames_in_flight; ++i) {
-        frame_data_[i].camera_buffer = create_buffer({
+        frame_data_[i].camera_buffer = create_buffer(*vk_core_, {
             .alloc_size = sizeof(GPUCameraData),
             .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
@@ -554,7 +538,7 @@ void Application::render() {
     vkResetFences(vk_core_->device(), 1, &current_frame_data.render_fence);
 
     uint32_t swapchain_image_index = 0;
-    vkAcquireNextImageKHR(vk_core_->device(), swapchain_, 1000000000, current_frame_data.present_semaphore, nullptr, &swapchain_image_index);
+    vkAcquireNextImageKHR(vk_core_->device(), vk_swapchain_->swapchain(), 1000000000, current_frame_data.present_semaphore, nullptr, &swapchain_image_index);
     
     vkResetCommandBuffer(current_frame_data.command_buffer, 0);
 
@@ -618,10 +602,12 @@ void Application::render() {
 
     vkQueueSubmit(vk_core_->graphics_queue(), 1, &submit_info, current_frame_data.render_fence);
 
+    VkSwapchainKHR helper = vk_swapchain_->swapchain();
+
     const VkPresentInfoKHR present_info = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext = nullptr,
-        .pSwapchains = &swapchain_,
+        .pSwapchains = &helper,
         .swapchainCount = 1,
         .pWaitSemaphores = &current_frame_data.render_semaphore,
         .waitSemaphoreCount = 1,
@@ -641,13 +627,13 @@ void Application::load_mesh() {
 
 void Application::upload_mesh(Mesh& mesh) {
     
-    mesh.vertex_buffer_ = create_buffer_from_data({
+    mesh.vertex_buffer_ = vkc::create_buffer_from_data(*vk_core_, {
         .alloc_size = mesh.vertices_.size() * sizeof(Vertex),
         .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
     }, mesh.vertices_.data());
 
-    mesh.index_buffer_ = create_buffer_from_data({
+    mesh.index_buffer_ = vkc::create_buffer_from_data(*vk_core_, {
         .alloc_size = mesh.indices_.size() * sizeof(std::uint32_t),
         .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
@@ -656,30 +642,4 @@ void Application::upload_mesh(Mesh& mesh) {
 
 FrameData& Application::get_current_frame() {
     return frame_data_[frame_number_ % frames_in_flight];
-}
-
-AllocatedBuffer Application::create_buffer(const BufferCreateInfo& buffer_create_info) {
-	VkBufferCreateInfo buffer_info = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .pNext = nullptr,
-        .size = buffer_create_info.alloc_size,
-        .usage = buffer_create_info.usage,
-    };
-
-	VmaAllocationCreateInfo vmaalloc_info = {.usage = buffer_create_info.memory_usage,};
-
-	AllocatedBuffer new_buffer;
-
-	VK_CHECK(vmaCreateBuffer(vk_core_->allocator(), &buffer_info, &vmaalloc_info, &new_buffer.buffer, &new_buffer.allocation, nullptr));
-
-	return new_buffer;
-}
-
-AllocatedBuffer Application::create_buffer_from_data(const BufferCreateInfo& buffer_create_info, void* data) {
-    AllocatedBuffer buffer = create_buffer(buffer_create_info);
-    void* mapped_mem = nullptr;
-	vmaMapMemory(vk_core_->allocator(), buffer.allocation, &mapped_mem);
-	memcpy(mapped_mem, data, buffer_create_info.alloc_size);
-	vmaUnmapMemory(vk_core_->allocator(), buffer.allocation);
-    return buffer; 
 }
