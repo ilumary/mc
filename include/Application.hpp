@@ -10,6 +10,7 @@
 #include "Camera.hpp"
 #include "Terrain.hpp"
 #include "Window.hpp"
+#include "Core.hpp"
 
 #include <fmt/core.h>
 #include <glm/glm.hpp>
@@ -29,7 +30,7 @@
 
 constexpr std::uint32_t frames_in_flight = 2;
 
-struct GPUCameraData{
+struct GPUCameraData {
 	glm::mat4 view;
 	glm::mat4 proj;
 	glm::mat4 viewproj;
@@ -73,19 +74,9 @@ struct Mesh {
 class Application {
 
     Window* window_;
-    VkExtent2D window_extent_{};
+    VkExtent2D window_extent_{}; 
 
-    VkDebugUtilsMessengerEXT debug_messenger_{};
-
-    VkInstance instance_{};
-    VkPhysicalDevice physical_device_{};
-    VkSurfaceKHR surface_{};
-    VkDevice device_{};
-    VkQueue graphics_queue_{};
-    uint32_t graphics_queue_family_index_ = 0;
-    VkQueue present_queue_{};
-
-    VmaAllocator allocator_{};
+    vkc::Core* vk_core_;
 
     VkRenderPass render_pass_{};
     std::vector<VkFramebuffer> framebuffers_{};
@@ -133,7 +124,6 @@ public:
     bool is_mouse_dragging() const { return mouse_dragging_; }
 
 private:
-    void init_vk_device();
     void init_swapchain();
     void init_command();
     void init_renderpass();

@@ -4,9 +4,9 @@ project(MC)
 
 set(CMAKE_CXX_STANDARD 20)
 
-include_directories(include)
+include_directories(include include/vulkan-helpers)
 
-file(GLOB SOURCES "src/*.cpp")
+file(GLOB SOURCES "src/*.cpp" "src/vulkan-helpers/*.cpp")
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

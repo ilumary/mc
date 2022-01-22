@@ -55,6 +55,7 @@ void Application::update_camera_position(int key) {
 Application::Application() {
     window_extent_ = VkExtent2D{1400, 900};
     window_ = new Window(window_extent_.width, window_extent_.height, "Voxel Simulation");
+    vk_core_ = new vkc::Core(*window_);
 
     cam_.setPosition({ 0.f, 0.f,-2.f });
     cam_.setPerspective(70.f, 1400.f / 900.f, 0.1f, 200.f);
@@ -66,7 +67,7 @@ Application::Application() {
     glfwSetCursorPosCallback(window_->glfw_window(), cursor_position_callback);
     glfwSetMouseButtonCallback(window_->glfw_window(), mouse_button_callback);
 
-    init_vk_device();
+    //init_vk_device();
     init_swapchain();
     init_command();
     init_renderpass();
@@ -78,43 +79,35 @@ Application::Application() {
 }
 
 Application::~Application() {
-    vmaDestroyBuffer(allocator_, terrain_mesh_.index_buffer_.buffer, terrain_mesh_.index_buffer_.allocation);
-    vmaDestroyBuffer(allocator_, terrain_mesh_.vertex_buffer_.buffer, terrain_mesh_.vertex_buffer_.allocation);
+    vmaDestroyBuffer(vk_core_->allocator(), terrain_mesh_.index_buffer_.buffer, terrain_mesh_.index_buffer_.allocation);
+    vmaDestroyBuffer(vk_core_->allocator(), terrain_mesh_.vertex_buffer_.buffer, terrain_mesh_.vertex_buffer_.allocation);
 
-    vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
-    vkDestroyPipelineLayout(device_, graphics_pipeline_layout_, nullptr);
+    vkDestroyPipeline(vk_core_->device(), graphics_pipeline_, nullptr);
+    vkDestroyPipelineLayout(vk_core_->device(), graphics_pipeline_layout_, nullptr);
 
-    vkDestroyRenderPass(device_, render_pass_, nullptr);
+    vkDestroyRenderPass(vk_core_->device(), render_pass_, nullptr);
 
     for(auto& frame_data : frame_data_) {
-        vmaDestroyBuffer(allocator_, frame_data.camera_buffer.buffer, frame_data.camera_buffer.allocation);
-        vkDestroyFence(device_, frame_data.render_fence, nullptr);
-        vkDestroySemaphore(device_, frame_data.render_semaphore, nullptr);
-        vkDestroySemaphore(device_, frame_data.present_semaphore, nullptr);
-        vkDestroyCommandPool(device_, frame_data.command_pool, nullptr);
+        vmaDestroyBuffer(vk_core_->allocator(), frame_data.camera_buffer.buffer, frame_data.camera_buffer.allocation);
+        vkDestroyFence(vk_core_->device(), frame_data.render_fence, nullptr);
+        vkDestroySemaphore(vk_core_->device(), frame_data.render_semaphore, nullptr);
+        vkDestroySemaphore(vk_core_->device(), frame_data.present_semaphore, nullptr);
+        vkDestroyCommandPool(vk_core_->device(), frame_data.command_pool, nullptr);
     }
 
-    vkDestroyDescriptorPool(device_, descriptor_pool_, nullptr);
-    vkDestroyDescriptorSetLayout(device_, global_descriptor_set_layout_, nullptr);
+    vkDestroyDescriptorPool(vk_core_->device(), descriptor_pool_, nullptr);
+    vkDestroyDescriptorSetLayout(vk_core_->device(), global_descriptor_set_layout_, nullptr);
 
     for(auto &framebuffer : framebuffers_) {
-        vkDestroyFramebuffer(device_, framebuffer, nullptr);
+        vkDestroyFramebuffer(vk_core_->device(), framebuffer, nullptr);
     }
 
     for(auto &image_view : swapchain_image_views_) {
-        vkDestroyImageView(device_, image_view, nullptr);
+        vkDestroyImageView(vk_core_->device(), image_view, nullptr);
     }
-    vkDestroyImageView(device_, depth_image_view_, nullptr);
-    vmaDestroyImage(allocator_, depth_image_.image, depth_image_.allocation);
-    vkDestroySwapchainKHR(device_, swapchain_, nullptr);
-
-    vmaDestroyAllocator(allocator_);
-
-    vkDestroyDevice(device_, nullptr);
-    vkDestroySurfaceKHR(instance_, surface_, nullptr);
-    vkb::destroy_debug_utils_messenger(instance_, debug_messenger_, nullptr);
-    vkDestroyInstance(instance_, nullptr);
-
+    vkDestroyImageView(vk_core_->device(), depth_image_view_, nullptr);
+    vmaDestroyImage(vk_core_->allocator(), depth_image_.image, depth_image_.allocation);
+    vkDestroySwapchainKHR(vk_core_->device(), swapchain_, nullptr);
 }
 
 void Application::run() {
@@ -125,50 +118,8 @@ void Application::run() {
     }
 }
 
-void Application::init_vk_device() {
-    auto instance_ret = vkb::InstanceBuilder{}.use_default_debug_messenger().request_validation_layers().build();
-    if (!instance_ret) {
-        fmt::print("{}\n", instance_ret.error().message());
-        std::exit(1);
-    }
-        
-    instance_ = instance_ret->instance;
-    glfwCreateWindowSurface(instance_, window_->glfw_window(), nullptr, &surface_);
-    debug_messenger_ = instance_ret->debug_messenger;
-
-    vkb::PhysicalDeviceSelector phys_device_selector(instance_ret.value());
-    auto phys_device_ret = phys_device_selector.set_surface(surface_).select();
-    if (!phys_device_ret) {
-        fmt::print("{}\n", instance_ret.error().message());
-        std::exit(1);
-    }
-    vkb::PhysicalDevice vkb_physical_device = phys_device_ret.value();
-    physical_device_ = vkb_physical_device.physical_device;
-
-    vkb::DeviceBuilder device_builder{ vkb_physical_device };
-    auto device_ret = device_builder.build();
-    if (!device_ret) {
-        fmt::print("{}\n", device_ret.error().message());
-        std::exit(1);
-    }
-    auto vkb_device = device_ret.value();
-    device_ = vkb_device.device;
-    
-    graphics_queue_ = vkb_device.get_queue(vkb::QueueType::graphics).value();
-    graphics_queue_family_index_ = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
-    present_queue_ = vkb_device.get_queue(vkb::QueueType::present).value();
-
-    const VmaAllocatorCreateInfo allocator_create_info = {
-        .instance = instance_,
-        .physicalDevice = physical_device_,
-        .device = device_,
-    };
-
-    VK_CHECK(vmaCreateAllocator(&allocator_create_info, &allocator_));
-}
-
 void Application::init_swapchain() {
-    vkb::SwapchainBuilder swapchain_builder{physical_device_, device_, surface_};
+    vkb::SwapchainBuilder swapchain_builder{vk_core_->physical_device(), vk_core_->device(), vk_core_->surface()};
     
     vkb::Swapchain vkb_swapchain = swapchain_builder
                                     .use_default_format_selection()
@@ -204,7 +155,7 @@ void Application::init_swapchain() {
         .requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
     };
 
-    vmaCreateImage(allocator_, &depth_image_create_info, &dimg_allocinfo, &depth_image_.image, &depth_image_.allocation, nullptr);
+    vmaCreateImage(vk_core_->allocator(), &depth_image_create_info, &dimg_allocinfo, &depth_image_.image, &depth_image_.allocation, nullptr);
 
     const VkImageViewCreateInfo depth_view_create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -221,7 +172,7 @@ void Application::init_swapchain() {
         },
     };
 
-    vkCreateImageView(device_, &depth_view_create_info, nullptr, &depth_image_view_);
+    vkCreateImageView(vk_core_->device(), &depth_view_create_info, nullptr, &depth_image_view_);
 }
 
 void Application::init_command() {
@@ -229,12 +180,12 @@ void Application::init_command() {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext = nullptr,
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = graphics_queue_family_index_,
+        .queueFamilyIndex = vk_core_->graphics_queue_family_index(),
     };
     
     for(std::uint32_t i = 0; i < frames_in_flight; ++i) {
         auto& frame_data = frame_data_[i];
-        vkCreateCommandPool(device_, &command_pool_create_info, nullptr, &frame_data.command_pool);
+        vkCreateCommandPool(vk_core_->device(), &command_pool_create_info, nullptr, &frame_data.command_pool);
 
         const VkCommandBufferAllocateInfo command_buffer_allocate_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -244,7 +195,7 @@ void Application::init_command() {
             .commandBufferCount = 1,
         };
 
-        vkAllocateCommandBuffers(device_, &command_buffer_allocate_info, &frame_data.command_buffer);
+        vkAllocateCommandBuffers(vk_core_->device(), &command_buffer_allocate_info, &frame_data.command_buffer);
     }
 }
 
@@ -301,7 +252,7 @@ void Application::init_renderpass() {
         .pSubpasses = &subpass,
     };
 
-    vkCreateRenderPass(device_, &render_pass_info, nullptr, &render_pass_);
+    vkCreateRenderPass(vk_core_->device(), &render_pass_info, nullptr, &render_pass_);
 }
 
 void Application::init_framebuffer() {
@@ -322,7 +273,7 @@ void Application::init_framebuffer() {
         const VkImageView attachments[] = {swapchain_image_views_[i], depth_image_view_};
         framebuffer_create_info.pAttachments = &attachments[0];
         framebuffer_create_info.attachmentCount = 2;
-        vkCreateFramebuffer(device_, &framebuffer_create_info, nullptr, &framebuffers_[i]);
+        vkCreateFramebuffer(vk_core_->device(), &framebuffer_create_info, nullptr, &framebuffers_[i]);
     }
 }
 
@@ -340,9 +291,9 @@ void Application::init_sync_structures() {
     };
 
     for(auto& frame_data : frame_data_) {
-        vkCreateSemaphore(device_, &semaphore_create_info, nullptr, &frame_data.render_semaphore);
-        vkCreateSemaphore(device_, &semaphore_create_info, nullptr, &frame_data.present_semaphore);
-        vkCreateFence(device_, &fence_create_info, nullptr, &frame_data.render_fence);
+        vkCreateSemaphore(vk_core_->device(), &semaphore_create_info, nullptr, &frame_data.render_semaphore);
+        vkCreateSemaphore(vk_core_->device(), &semaphore_create_info, nullptr, &frame_data.present_semaphore);
+        vkCreateFence(vk_core_->device(), &fence_create_info, nullptr, &frame_data.render_fence);
     }
 }
 
@@ -372,9 +323,9 @@ void Application::init_descriptors() {
         .pPoolSizes = sizes.data(),
     };
 
-	VK_CHECK(vkCreateDescriptorPool(device_, &descriptor_pool_create_info, nullptr, &descriptor_pool_));
+	VK_CHECK(vkCreateDescriptorPool(vk_core_->device(), &descriptor_pool_create_info, nullptr, &descriptor_pool_));
 
-	VK_CHECK(vkCreateDescriptorSetLayout(device_, &set_layout_info, nullptr, &global_descriptor_set_layout_));
+	VK_CHECK(vkCreateDescriptorSetLayout(vk_core_->device(), &set_layout_info, nullptr, &global_descriptor_set_layout_));
 
     for (std::uint32_t i = 0; i < frames_in_flight; ++i) {
         frame_data_[i].camera_buffer = create_buffer({
@@ -391,7 +342,7 @@ void Application::init_descriptors() {
             .pSetLayouts = &global_descriptor_set_layout_,
         };
 
-        vkAllocateDescriptorSets(device_, &alloc_info, &frame_data_[i].global_descriptor);
+        vkAllocateDescriptorSets(vk_core_->device(), &alloc_info, &frame_data_[i].global_descriptor);
 
         const VkDescriptorBufferInfo buffer_info = {
             .buffer = frame_data_[i].camera_buffer.buffer,
@@ -409,7 +360,7 @@ void Application::init_descriptors() {
             .pBufferInfo = &buffer_info,
         };
 
-        vkUpdateDescriptorSets(device_, 1, &write_set, 0, nullptr);
+        vkUpdateDescriptorSets(vk_core_->device(), 1, &write_set, 0, nullptr);
     }
 }
 
@@ -438,7 +389,7 @@ VkShaderModule Application::createShaderModule(const std::vector<char>& code) {
 	create_info.pCode = reinterpret_cast<const uint32_t*> (code.data ());
 
 	VkShaderModule shaderModule;
-	if (vkCreateShaderModule(device_, &create_info, nullptr, &shaderModule) != VK_SUCCESS) {
+	if (vkCreateShaderModule(vk_core_->device(), &create_info, nullptr, &shaderModule) != VK_SUCCESS) {
 		return VK_NULL_HANDLE; 
 	}
 
@@ -515,7 +466,7 @@ void Application::init_graphics_pipeline() {
         .rasterizerDiscardEnable = VK_FALSE,
         .polygonMode = VK_POLYGON_MODE_FILL,
         .lineWidth = 1.0f,
-        .cullMode = VK_CULL_MODE_NONE,
+        .cullMode = VK_CULL_MODE_BACK_BIT,
         .frontFace = VK_FRONT_FACE_CLOCKWISE,
         .depthBiasEnable = VK_FALSE,
     };
@@ -548,7 +499,7 @@ void Application::init_graphics_pipeline() {
         .pushConstantRangeCount = 0,
     };
 
-    VK_CHECK(vkCreatePipelineLayout(device_, &pipelineLayoutInfo, nullptr, &graphics_pipeline_layout_));
+    VK_CHECK(vkCreatePipelineLayout(vk_core_->device(), &pipelineLayoutInfo, nullptr, &graphics_pipeline_layout_));
 
     const VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
@@ -579,10 +530,10 @@ void Application::init_graphics_pipeline() {
         .basePipelineHandle = VK_NULL_HANDLE,
     };
 
-    VK_CHECK(vkCreateGraphicsPipelines(device_, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphics_pipeline_));
+    VK_CHECK(vkCreateGraphicsPipelines(vk_core_->device(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphics_pipeline_));
 
-    vkDestroyShaderModule(device_, frag_shader_module, nullptr);
-    vkDestroyShaderModule(device_, vert_shader_module, nullptr);
+    vkDestroyShaderModule(vk_core_->device(), frag_shader_module, nullptr);
+    vkDestroyShaderModule(vk_core_->device(), vert_shader_module, nullptr);
 }
 
 void Application::render() {
@@ -595,15 +546,15 @@ void Application::render() {
     };
 
 	void* data;
-	vmaMapMemory(allocator_, current_frame_data.camera_buffer.allocation, &data);
+	vmaMapMemory(vk_core_->allocator(), current_frame_data.camera_buffer.allocation, &data);
 	memcpy(data, &cam_data, sizeof(GPUCameraData));
-	vmaUnmapMemory(allocator_, current_frame_data.camera_buffer.allocation);
+	vmaUnmapMemory(vk_core_->allocator(), current_frame_data.camera_buffer.allocation);
 
-    vkWaitForFences(device_, 1, &current_frame_data.render_fence, true, 1000000000);
-    vkResetFences(device_, 1, &current_frame_data.render_fence);
+    vkWaitForFences(vk_core_->device(), 1, &current_frame_data.render_fence, true, 1000000000);
+    vkResetFences(vk_core_->device(), 1, &current_frame_data.render_fence);
 
     uint32_t swapchain_image_index = 0;
-    vkAcquireNextImageKHR(device_, swapchain_, 1000000000, current_frame_data.present_semaphore, nullptr, &swapchain_image_index);
+    vkAcquireNextImageKHR(vk_core_->device(), swapchain_, 1000000000, current_frame_data.present_semaphore, nullptr, &swapchain_image_index);
     
     vkResetCommandBuffer(current_frame_data.command_buffer, 0);
 
@@ -665,7 +616,7 @@ void Application::render() {
         .pSignalSemaphores = &current_frame_data.render_semaphore,
     };
 
-    vkQueueSubmit(graphics_queue_, 1, &submit_info, current_frame_data.render_fence);
+    vkQueueSubmit(vk_core_->graphics_queue(), 1, &submit_info, current_frame_data.render_fence);
 
     const VkPresentInfoKHR present_info = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -677,7 +628,7 @@ void Application::render() {
         .pImageIndices = &swapchain_image_index,
     };
 
-    vkQueuePresentKHR(present_queue_, &present_info);
+    vkQueuePresentKHR(vk_core_->present_queue(), &present_info);
 
     ++frame_number_;
 }
@@ -719,7 +670,7 @@ AllocatedBuffer Application::create_buffer(const BufferCreateInfo& buffer_create
 
 	AllocatedBuffer new_buffer;
 
-	VK_CHECK(vmaCreateBuffer(allocator_, &buffer_info, &vmaalloc_info, &new_buffer.buffer, &new_buffer.allocation, nullptr));
+	VK_CHECK(vmaCreateBuffer(vk_core_->allocator(), &buffer_info, &vmaalloc_info, &new_buffer.buffer, &new_buffer.allocation, nullptr));
 
 	return new_buffer;
 }
@@ -727,8 +678,8 @@ AllocatedBuffer Application::create_buffer(const BufferCreateInfo& buffer_create
 AllocatedBuffer Application::create_buffer_from_data(const BufferCreateInfo& buffer_create_info, void* data) {
     AllocatedBuffer buffer = create_buffer(buffer_create_info);
     void* mapped_mem = nullptr;
-	vmaMapMemory(allocator_, buffer.allocation, &mapped_mem);
+	vmaMapMemory(vk_core_->allocator(), buffer.allocation, &mapped_mem);
 	memcpy(mapped_mem, data, buffer_create_info.alloc_size);
-	vmaUnmapMemory(allocator_, buffer.allocation);
+	vmaUnmapMemory(vk_core_->allocator(), buffer.allocation);
     return buffer; 
 }
