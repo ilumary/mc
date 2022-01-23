@@ -57,13 +57,6 @@ struct FrameData {
 	VkDescriptorSet global_descriptor{};
 };
 
-struct Mesh {
-    std::vector<Vertex> vertices_;
-    std::vector<std::uint32_t> indices_;
-    vkc::AllocatedBuffer vertex_buffer_;
-    vkc::AllocatedBuffer index_buffer_;
-};
-
 class Application {
 
     Window* window_;
@@ -88,7 +81,7 @@ class Application {
     VkDescriptorSetLayout global_descriptor_set_layout_;
     VkDescriptorPool descriptor_pool_;
 
-    Mesh terrain_mesh_{};
+    Terrain terrain_{};
 
     Camera cam_;
 
@@ -121,9 +114,6 @@ private:
     void init_sync_structures();
     void init_descriptors();
     void init_graphics_pipeline();
-
-    std::vector<char> readFile(const std::string& filename);
-    VkShaderModule createShaderModule(const std::vector<char>& code);
 
     FrameData& get_current_frame();
 

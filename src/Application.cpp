@@ -67,7 +67,7 @@ Application::Application() {
     glfwSetKeyCallback(window_->glfw_window(), key_callback);
     glfwSetCursorPosCallback(window_->glfw_window(), cursor_position_callback);
     glfwSetMouseButtonCallback(window_->glfw_window(), mouse_button_callback);
-
+    
     init_depthbuffer();
     init_command();
     init_renderpass();
@@ -79,8 +79,7 @@ Application::Application() {
 }
 
 Application::~Application() {
-    vmaDestroyBuffer(vk_core_->allocator(), terrain_mesh_.index_buffer_.buffer, terrain_mesh_.index_buffer_.allocation);
-    vmaDestroyBuffer(vk_core_->allocator(), terrain_mesh_.vertex_buffer_.buffer, terrain_mesh_.vertex_buffer_.allocation);
+    terrain_.destroy(*vk_core_);
 
     vkDestroyPipeline(vk_core_->device(), graphics_pipeline_, nullptr);
     vkDestroyPipelineLayout(vk_core_->device(), graphics_pipeline_layout_, nullptr);
@@ -449,13 +448,14 @@ void Application::render() {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_);
 
     VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(cmd, 0, 1, &terrain_mesh_.vertex_buffer_.buffer, &offset);
-
-    vkCmdBindIndexBuffer(cmd, terrain_mesh_.index_buffer_.buffer, 0, VK_INDEX_TYPE_UINT32);
+    
+    vkCmdBindVertexBuffers(cmd, 0, 1, &terrain_.vertex_buffer.buffer, &offset);
+    
+    vkCmdBindIndexBuffer(cmd, terrain_.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout_, 0, 1, &current_frame_data.global_descriptor, 0, nullptr);
 
-    vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(terrain_mesh_.indices_.size()), 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(terrain_.indices.size()), 1, 0, 0, 0);
 
     //vkCmdDraw(cmd, static_cast<std::uint32_t>(terrain_mesh_.vertices_.size()), 1, 0, 0);
 
@@ -496,24 +496,21 @@ void Application::render() {
 }
 
 void Application::load_mesh() {
-    terrain_mesh_.vertices_ = generate_terrain();
-    terrain_mesh_.indices_ = generate_indices();
-    upload_mesh(terrain_mesh_);
+    upload_mesh(terrain_);
 }
 
 void Application::upload_mesh(Mesh& mesh) {
-    
-    mesh.vertex_buffer_ = vkc::create_buffer_from_data(*vk_core_, {
-        .alloc_size = mesh.vertices_.size() * sizeof(Vertex),
+    mesh.vertex_buffer = vkc::create_buffer_from_data(*vk_core_, {
+        .alloc_size = mesh.vertices.size() * sizeof(Vertex),
         .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-    }, mesh.vertices_.data());
+    }, mesh.vertices.data());
 
-    mesh.index_buffer_ = vkc::create_buffer_from_data(*vk_core_, {
-        .alloc_size = mesh.indices_.size() * sizeof(std::uint32_t),
+    mesh.index_buffer = vkc::create_buffer_from_data(*vk_core_, {
+        .alloc_size = mesh.indices.size() * sizeof(std::uint32_t),
         .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-    }, mesh.indices_.data());
+    }, mesh.indices.data());
 }
 
 FrameData& Application::get_current_frame() {

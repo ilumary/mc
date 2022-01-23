@@ -1,6 +1,13 @@
 #include "Terrain.hpp"
 
-std::vector<Vertex> generate_terrain() {
+Terrain::Terrain() {
+	vertices = generate_terrain();
+	indices = generate_indices();
+}
+
+Terrain::~Terrain() {}
+
+std::vector<Vertex> Terrain::generate_terrain() {
     std::vector<Vertex> vertices =
 	{
 		//Front face
@@ -42,7 +49,7 @@ std::vector<Vertex> generate_terrain() {
     return vertices;
 }
 
-std::vector<std::uint32_t> generate_indices() {
+std::vector<std::uint32_t> Terrain::generate_indices() {
     std::vector<std::uint32_t> indices =
 	{
 		//Front face
