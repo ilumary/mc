@@ -27,6 +27,7 @@ mc uses a number of third party libraries/headers:
 - [glfw] - Platform independent window library
 - [fmt] - Formatting library used for logging
 - [glm] - Used for everything that includes some kind of math aka matrices and vectors
+- [stb] - Used for texture images
 
 ## Installation
 
@@ -50,3 +51,4 @@ You are free to do with my code whatever you want and if you have some suggestio
 [glfw]:<https://github.com/glfw/glfw>
 [fmt]:<https://github.com/fmtlib/fmt>
 [glm]:<https://github.com/g-truc/glm>
+[stb]:<https://github.com/nothings/stb>
