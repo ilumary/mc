@@ -8,7 +8,7 @@ void Texture::createSampler(vkc::Core &core, VkSampler &textureSampler) {
 	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.anisotropyEnable = VK_TRUE;
+	samplerInfo.anisotropyEnable = VK_FALSE;
 	samplerInfo.maxAnisotropy = 4;
 	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	samplerInfo.unnormalizedCoordinates = VK_FALSE;
@@ -23,6 +23,5 @@ void Texture::createSampler(vkc::Core &core, VkSampler &textureSampler) {
 
 void Texture::destroy(vkc::Core *core) {
     vkDestroyImageView(core->device(), image_view_, nullptr);
-	vkDestroyImage(core->device(), image_, nullptr);
-	vkFreeMemory(core->device(), image_memory_, nullptr);
+	vmaDestroyImage(core->allocator(), image_.image, image_.allocation);
 }

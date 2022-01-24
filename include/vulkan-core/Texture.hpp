@@ -7,11 +7,11 @@
 #include <fmt/core.h>
 
 #include "Core.hpp"
+#include "Image.hpp"
 
 class Texture {
 public:
-    VkImage image_;
-    VkDeviceMemory image_memory_;  
+    vkc::AllocatedImage image_; 
     VkImageView image_view_;
 
     VkFilter magFilter = VK_FILTER_NEAREST;
