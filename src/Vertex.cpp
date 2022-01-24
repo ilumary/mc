@@ -25,7 +25,15 @@ std::vector<VkVertexInputAttributeDescription> Vertex::attributes_description() 
         .offset = offsetof(Vertex, normal),
     };
 
+    VkVertexInputAttributeDescription uvAttribute = {
+        .binding = 0,
+        .location = 2,
+        .format = VK_FORMAT_R32G32_SFLOAT,
+        .offset = offsetof(Vertex, uv),
+    };
+
 	attributes.push_back(positionAttribute);
 	attributes.push_back(normalAttribute);
+    attributes.push_back(uvAttribute);
 	return attributes;
 }
