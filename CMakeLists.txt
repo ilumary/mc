@@ -4,7 +4,7 @@ project(MC)
 
 set(CMAKE_CXX_STANDARD 20)
 
-include_directories(include include/vulkan-core)
+include_directories(include include/vulkan-core extern/stb)
 
 file(GLOB SOURCES "src/*.cpp" "src/vulkan-core/*.cpp")
 
