@@ -4,7 +4,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include "VkBootstrap.h"
 #include "vk_mem_alloc.h"
 
 #include "Camera.hpp"
@@ -15,15 +14,13 @@
 #include "Swapchain.hpp"
 #include "ShaderModule.hpp"
 #include "GraphicsPipeline.hpp"
+#include "Texture.hpp"
 
 #include <fmt/core.h>
 #include <glm/glm.hpp>
-#include <glm/gtx/transform.hpp>
 
-#include <iostream>
 #include <vector>
 #include <cmath>
-#include <fstream>
 
 #define VK_CHECK(x)                                     \
     do {                                                \
@@ -112,6 +109,7 @@ private:
     void init_renderpass();
     void init_framebuffer();
     void init_sync_structures();
+    void init_texture_image();
     void init_descriptors();
     void init_graphics_pipeline();
 
