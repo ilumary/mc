@@ -1,5 +1,8 @@
 #include "../include/Application.hpp"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     auto* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
 
@@ -73,6 +76,8 @@ Application::Application() {
     init_renderpass();
     init_framebuffer();
     init_sync_structures();
+    init_texture_image();
+    texture_.createSampler(*vk_core_, textureSampler);
     init_descriptors();
     init_graphics_pipeline();
     load_mesh();
@@ -258,6 +263,46 @@ void Application::init_framebuffer() {
     }
 }
 
+void Application::init_texture_image() {
+    int texWidth, texHeight, texChannels;
+
+	stbi_uc* pixels = stbi_load("../../textures/uv.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+
+    if (!pixels) { fmt::print("Failed to load texture file\n"); }
+
+    void* pixel_ptr = pixels;
+	VkDeviceSize imageSize = texWidth * texHeight * 4;
+	VkFormat image_format = VK_FORMAT_R8G8B8A8_SRGB;
+
+	vkc::AllocatedBuffer stagingBuffer = vkc::create_buffer_from_data(*vk_core_, {
+        .alloc_size = imageSize, 
+        .memory_usage = VMA_MEMORY_USAGE_CPU_ONLY,
+        .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    }, pixel_ptr);
+
+    vkc::create_image(*vk_core_, {
+        .tex_width = static_cast<uint32_t>(texWidth),
+        .tex_height = static_cast<uint32_t>(texHeight),
+        .format = VK_FORMAT_R8G8B8A8_UNORM,
+        .image_tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage_flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+    }, texture_.image_);
+
+    transitionImageLayout(texture_.image_, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    copyBufferToImage(stagingBuffer, texture_.image_, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+
+    transitionImageLayout(texture_.image_, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    vkc::destroy_buffer(*vk_core_, stagingBuffer);
+
+    vkc::create_image_view(*vk_core_, {
+        .image = texture_.image_.image, 
+        .format = VK_FORMAT_R8G8B8A8_UNORM, 
+        .aspect_flags = VK_IMAGE_ASPECT_COLOR_BIT,
+    }, texture_.image_view_);
+}
+
 void Application::init_sync_structures() {
     const VkSemaphoreCreateInfo semaphore_create_info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -286,20 +331,33 @@ void Application::init_descriptors() {
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
     };
 
+    VkDescriptorSetLayoutBinding samplerLayoutBinding{
+        .binding = 1,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .pImmutableSamplers = nullptr,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+    };
+
+    VkDescriptorSetLayoutBinding bindings[2] = {camera_buffer_binding, samplerLayoutBinding};
+
 	const VkDescriptorSetLayoutCreateInfo set_layout_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .pNext = nullptr,
-        .bindingCount = 1,
+        .bindingCount = 2,
         .flags = 0,
-        .pBindings = &camera_buffer_binding,
+        .pBindings = &bindings[0],
     };
 
-	std::vector<VkDescriptorPoolSize> sizes = {{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 }};
+	std::vector<VkDescriptorPoolSize> sizes = {
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(vk_swapchain_->images().size()) },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(vk_swapchain_->images().size()) }
+    };
 
 	VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .flags = 0,
-        .maxSets = 10,
+        .maxSets = static_cast<uint32_t>(vk_swapchain_->images().size()),
         .poolSizeCount = static_cast<std::uint32_t>(sizes.size()),
         .pPoolSizes = sizes.data(),
     };
@@ -331,7 +389,12 @@ void Application::init_descriptors() {
             .range = sizeof(GPUCameraData),
         };
 
-        VkWriteDescriptorSet write_set = {
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = texture_.image_view_;
+        imageInfo.sampler = textureSampler;
+
+        VkWriteDescriptorSet write_set_uniform_buffer = {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .pNext = nullptr,
             .dstBinding = 0,
@@ -341,7 +404,20 @@ void Application::init_descriptors() {
             .pBufferInfo = &buffer_info,
         };
 
-        vkUpdateDescriptorSets(vk_core_->device(), 1, &write_set, 0, nullptr);
+        VkWriteDescriptorSet write_set_uv_texture = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = nullptr,
+            .dstBinding = 1,
+            .dstArrayElement = 0,
+            .dstSet = frame_data_[i].global_descriptor,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .pImageInfo = &imageInfo,
+        };
+
+        VkWriteDescriptorSet write_sets[2] = { write_set_uniform_buffer, write_set_uv_texture };
+
+        vkUpdateDescriptorSets(vk_core_->device(), 2, &write_sets[0], 0, nullptr);
     }
 }
 
@@ -515,4 +591,134 @@ void Application::upload_mesh(Mesh& mesh) {
 
 FrameData& Application::get_current_frame() {
     return frame_data_[frame_number_ % frames_in_flight];
+}
+
+void Application::transitionImageLayout(vkc::AllocatedImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+    auto frame_data = get_current_frame();
+
+    VkCommandBufferAllocateInfo allocInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandPool = frame_data.command_pool,
+        .commandBufferCount = 1,
+    };
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(vk_core_->device(), &allocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+	    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    VkImageMemoryBarrier barrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout = oldLayout,
+        .newLayout = newLayout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = image.image,
+        .subresourceRange.baseMipLevel = 0,
+        .subresourceRange.levelCount = 1,
+        .subresourceRange.baseArrayLayer = 0,
+        .subresourceRange.layerCount = 1,
+    };
+
+	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+		if (VK_FORMAT_D32_SFLOAT_S8_UINT || VK_FORMAT_D24_UNORM_S8_UINT) {
+			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+		}
+	} else {
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	}
+
+	VkPipelineStageFlags sourceStage;
+	VkPipelineStageFlags destinationStage;
+
+	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	} else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	} else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	} else {
+		throw std::invalid_argument("vkCraft: Unsupported layout transition!");
+	}
+
+	vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(vk_core_->graphics_queue(), 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(vk_core_->graphics_queue());
+
+	vkFreeCommandBuffers(vk_core_->device(), frame_data.command_pool, 1, &commandBuffer);
+}
+
+void Application::copyBufferToImage(vkc::AllocatedBuffer buffer, vkc::AllocatedImage image, uint32_t width, uint32_t height) {
+    auto frame_data = get_current_frame();
+
+    VkCommandBufferAllocateInfo allocInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandPool = frame_data.command_pool,
+        .commandBufferCount = 1,
+    };
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(vk_core_->device(), &allocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+	    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    VkBufferImageCopy region = {
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .imageSubresource.mipLevel = 0,
+        .imageSubresource.baseArrayLayer = 0,
+        .imageSubresource.layerCount = 1,
+        .imageOffset = { 0, 0, 0 },
+        .imageExtent = { width, height, 1 },
+    };
+	
+	vkCmdCopyBufferToImage(commandBuffer, buffer.buffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(vk_core_->graphics_queue(), 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(vk_core_->graphics_queue());
+
+	vkFreeCommandBuffers(vk_core_->device(), frame_data.command_pool, 1, &commandBuffer);
 }

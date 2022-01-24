@@ -37,10 +37,10 @@ struct GPUCameraData {
 	glm::mat4 viewproj;
 };
 
-struct AllocatedImage {
+/*struct AllocatedImage {
     VkImage image;
     VmaAllocation allocation;
-};
+};*/
 
 struct FrameData {
     VkSemaphore render_semaphore{};
@@ -72,13 +72,16 @@ class Application {
     VkPipeline graphics_pipeline_{};
 
     VkImageView depth_image_view_{};
-    AllocatedImage depth_image_{};
+    vkc::AllocatedImage depth_image_{};
     VkFormat depth_image_format_{};
 
     VkDescriptorSetLayout global_descriptor_set_layout_;
     VkDescriptorPool descriptor_pool_;
 
     Terrain terrain_{};
+
+    Texture texture_;
+    VkSampler textureSampler = VK_NULL_HANDLE;
 
     Camera cam_;
 
@@ -114,6 +117,8 @@ private:
     void init_graphics_pipeline();
 
     FrameData& get_current_frame();
+    void transitionImageLayout(vkc::AllocatedImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+    void copyBufferToImage(vkc::AllocatedBuffer buffer, vkc::AllocatedImage image, uint32_t width, uint32_t height);
 
     void render();
     void load_mesh();
