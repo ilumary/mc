@@ -112,8 +112,6 @@ private:
     void init_graphics_pipeline();
 
     FrameData& get_current_frame();
-    void transitionImageLayout(vkc::AllocatedImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-    void copyBufferToImage(vkc::AllocatedBuffer buffer, vkc::AllocatedImage image, uint32_t width, uint32_t height);
 
     void render();
     void load_mesh();
