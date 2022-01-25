@@ -30,4 +30,39 @@ namespace vkc {
     void destroy_buffer(vkc::Core& core, AllocatedBuffer buffer) {
         vmaDestroyBuffer(core.allocator(), buffer.buffer, buffer.allocation);
     }
+
+    VkCommandBuffer begin_single_time_commands(vkc::Core& core, VkCommandPool& command_pool) {
+        VkCommandBufferAllocateInfo allocInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandPool = command_pool,
+            .commandBufferCount = 1,
+        };
+
+        VkCommandBuffer commandBuffer;
+        vkAllocateCommandBuffers(core.device(), &allocInfo, &commandBuffer);
+
+        VkCommandBufferBeginInfo beginInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        };
+
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        return commandBuffer;
+    }
+
+    void submit_single_time_commands(vkc::Core& core, VkCommandPool& command_pool, VkCommandBuffer& command_buffer) {
+        vkEndCommandBuffer(command_buffer);
+
+        VkSubmitInfo submitInfo = {};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &command_buffer;
+
+        vkQueueSubmit(core.graphics_queue(), 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(core.graphics_queue());
+
+        vkFreeCommandBuffers(core.device(), command_pool, 1, &command_buffer);
+    }
 }

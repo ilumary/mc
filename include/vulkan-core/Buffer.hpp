@@ -22,6 +22,9 @@ namespace vkc {
     AllocatedBuffer create_buffer(vkc::Core& core, const BufferCreateInfo& buffer_create_info);
     AllocatedBuffer create_buffer_from_data(vkc::Core& core, const BufferCreateInfo& buffer_create_info, void* data);
 
+    VkCommandBuffer begin_single_time_commands(vkc::Core& core, VkCommandPool& command_pool);
+    void submit_single_time_commands(vkc::Core& core, VkCommandPool& command_pool, VkCommandBuffer& command_buffer);
+
     void destroy_buffer(vkc::Core& core, AllocatedBuffer buffer);
 }
 
