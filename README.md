@@ -10,6 +10,7 @@ mc is my take on the always popular minecraft clones and a follow-up to my last 
 Planned: 
 
 - Refactor and clean up code! 
+- Fix Validation Errors
 - Get some terrain to generate 
 - Add placing/destruction of blocks
 - Divide terrain into chunks with dynamic loading/unloading
@@ -31,7 +32,7 @@ mc uses a number of third party libraries/headers:
 
 ## Installation
 
-As of now mc is not very easy to get running, but I intend on changing that later down the road. For now either you use a Mac with homebrew or you will have to change a lot of the include paths in the cmake file. Only vk-bootstrap and VulkanMemoryAllocator will work out of the box, because they were added with git submodules.
+As of now mc is not very easy to get running, but I intend on changing that later down the road. For now either you use a Mac with homebrew or you will have to change a lot of the include paths in the cmake file. Only vk-bootstrap, stb and VulkanMemoryAllocator will work out of the box, because they were added with git submodules.
 
 That aside, with the right include parameters, the code base itself should run on the major platforms without issues though this is in no way tested so don't expect too much. 
 
