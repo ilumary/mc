@@ -37,11 +37,6 @@ struct GPUCameraData {
 	glm::mat4 viewproj;
 };
 
-/*struct AllocatedImage {
-    VkImage image;
-    VmaAllocation allocation;
-};*/
-
 struct FrameData {
     VkSemaphore render_semaphore{};
     VkSemaphore present_semaphore{};

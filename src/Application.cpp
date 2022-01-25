@@ -119,46 +119,23 @@ void Application::run() {
 }
 
 void Application::init_depthbuffer() {
-    depth_image_format_ = VK_FORMAT_D32_SFLOAT;
-
     const VkExtent3D depth_extent = {window_extent_.width, window_extent_.height, 1};
 
-    const VkImageCreateInfo depth_image_create_info = { 
-        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .pNext = nullptr,
-        .imageType = VK_IMAGE_TYPE_2D,
-        .format = depth_image_format_,
+    depth_image_format_ = VK_FORMAT_D32_SFLOAT;
+
+    vkc::create_image(*vk_core_, {
         .extent = depth_extent,
-        .mipLevels = 1,
-        .arrayLayers = 1,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-    };
-
-    VmaAllocationCreateInfo dimg_allocinfo = { 
-        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-        .requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-    };
-
-    vmaCreateImage(vk_core_->allocator(), &depth_image_create_info, &dimg_allocinfo, &depth_image_.image, &depth_image_.allocation, nullptr);
-
-    const VkImageViewCreateInfo depth_view_create_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .pNext = nullptr,
-        .image = depth_image_.image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = depth_image_format_,
-        .subresourceRange = {
-            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-    };
+        .image_tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage_flags = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        .required_flags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+    }, depth_image_);
 
-    vkCreateImageView(vk_core_->device(), &depth_view_create_info, nullptr, &depth_image_view_);
+    vkc::create_image_view(*vk_core_, {
+        .image = depth_image_.image,
+        .format = depth_image_format_,
+        .aspect_flags = VK_IMAGE_ASPECT_DEPTH_BIT,
+    }, depth_image_view_);
 }
 
 void Application::init_command() {
@@ -281,8 +258,7 @@ void Application::init_texture_image() {
     }, pixel_ptr);
 
     vkc::create_image(*vk_core_, {
-        .tex_width = static_cast<uint32_t>(texWidth),
-        .tex_height = static_cast<uint32_t>(texHeight),
+        .extent = {static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1},
         .format = VK_FORMAT_R8G8B8A8_UNORM,
         .image_tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage_flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -594,131 +570,84 @@ FrameData& Application::get_current_frame() {
 }
 
 void Application::transitionImageLayout(vkc::AllocatedImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
-    auto frame_data = get_current_frame();
+    for (std::uint32_t i = 0; i < frames_in_flight; ++i) {
 
-    VkCommandBufferAllocateInfo allocInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandPool = frame_data.command_pool,
-        .commandBufferCount = 1,
-    };
+        VkCommandBuffer commandBuffer = vkc::begin_single_time_commands(*vk_core_, frame_data_[i].command_pool);
 
-	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(vk_core_->device(), &allocInfo, &commandBuffer);
+        VkImageMemoryBarrier barrier = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .oldLayout = oldLayout,
+            .newLayout = newLayout,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = image.image,
+            .subresourceRange.baseMipLevel = 0,
+            .subresourceRange.levelCount = 1,
+            .subresourceRange.baseArrayLayer = 0,
+            .subresourceRange.layerCount = 1,
+        };
 
-	VkCommandBufferBeginInfo beginInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-	    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
+        if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+            if (VK_FORMAT_D32_SFLOAT_S8_UINT || VK_FORMAT_D24_UNORM_S8_UINT) {
+                barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+            }
+        } else {
+            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        }
 
-    VkImageMemoryBarrier barrier = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .oldLayout = oldLayout,
-        .newLayout = newLayout,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = image.image,
-        .subresourceRange.baseMipLevel = 0,
-        .subresourceRange.levelCount = 1,
-        .subresourceRange.baseArrayLayer = 0,
-        .subresourceRange.layerCount = 1,
-    };
+        VkPipelineStageFlags sourceStage;
+        VkPipelineStageFlags destinationStage;
 
-	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-		if (VK_FORMAT_D32_SFLOAT_S8_UINT || VK_FORMAT_D24_UNORM_S8_UINT) {
-			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-		}
-	} else {
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	}
+            sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-	VkPipelineStageFlags sourceStage;
-	VkPipelineStageFlags destinationStage;
+            sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        } else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-		barrier.srcAccessMask = 0;
-		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        } else {
+            throw std::invalid_argument("Unsupported layout transition!");
+        }
 
-		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	} else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-		sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	} else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-		barrier.srcAccessMask = 0;
-		barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	} else {
-		throw std::invalid_argument("vkCraft: Unsupported layout transition!");
-	}
-
-	vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-	vkEndCommandBuffer(commandBuffer);
-
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
-
-	vkQueueSubmit(vk_core_->graphics_queue(), 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(vk_core_->graphics_queue());
-
-	vkFreeCommandBuffers(vk_core_->device(), frame_data.command_pool, 1, &commandBuffer);
+        vkc::submit_single_time_commands(*vk_core_, frame_data_[i].command_pool, commandBuffer);
+    }
 }
 
 void Application::copyBufferToImage(vkc::AllocatedBuffer buffer, vkc::AllocatedImage image, uint32_t width, uint32_t height) {
-    auto frame_data = get_current_frame();
+    for (std::uint32_t i = 0; i < frames_in_flight; ++i) {
 
-    VkCommandBufferAllocateInfo allocInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandPool = frame_data.command_pool,
-        .commandBufferCount = 1,
-    };
+        VkCommandBuffer commandBuffer = vkc::begin_single_time_commands(*vk_core_, frame_data_[i].command_pool);
 
-	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(vk_core_->device(), &allocInfo, &commandBuffer);
+        VkBufferImageCopy region = {
+            .bufferOffset = 0,
+            .bufferRowLength = 0,
+            .bufferImageHeight = 0,
+            .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .imageSubresource.mipLevel = 0,
+            .imageSubresource.baseArrayLayer = 0,
+            .imageSubresource.layerCount = 1,
+            .imageOffset = { 0, 0, 0 },
+            .imageExtent = { width, height, 1 },
+        };
+        
+        vkCmdCopyBufferToImage(commandBuffer, buffer.buffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-	VkCommandBufferBeginInfo beginInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-	    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
+        vkc::submit_single_time_commands(*vk_core_, frame_data_[i].command_pool, commandBuffer);
 
-	vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-    VkBufferImageCopy region = {
-        .bufferOffset = 0,
-        .bufferRowLength = 0,
-        .bufferImageHeight = 0,
-        .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-        .imageSubresource.mipLevel = 0,
-        .imageSubresource.baseArrayLayer = 0,
-        .imageSubresource.layerCount = 1,
-        .imageOffset = { 0, 0, 0 },
-        .imageExtent = { width, height, 1 },
-    };
-	
-	vkCmdCopyBufferToImage(commandBuffer, buffer.buffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-    vkEndCommandBuffer(commandBuffer);
-
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
-
-	vkQueueSubmit(vk_core_->graphics_queue(), 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(vk_core_->graphics_queue());
-
-	vkFreeCommandBuffers(vk_core_->device(), frame_data.command_pool, 1, &commandBuffer);
+    }
 }
