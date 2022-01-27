@@ -14,6 +14,7 @@
 #include "Swapchain.hpp"
 #include "ShaderModule.hpp"
 #include "GraphicsPipeline.hpp"
+#include "Renderpass.hpp"
 #include "Texture.hpp"
 
 #include <fmt/core.h>
@@ -60,8 +61,8 @@ class Application {
 
     vkc::Core* vk_core_;
     vkc::Swapchain* vk_swapchain_;
+    vkc::Renderpass* vk_renderpass_;
 
-    VkRenderPass render_pass_{};
     std::vector<VkFramebuffer> framebuffers_{};
 
     FrameData frame_data_[frames_in_flight]{};
@@ -108,7 +109,6 @@ public:
 private:
     void init_depthbuffer();
     void init_command();
-    void init_renderpass();
     void init_framebuffer();
     void init_sync_structures();
     void init_texture_image();

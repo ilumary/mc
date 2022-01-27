@@ -73,8 +73,9 @@ Application::Application() {
     glfwSetMouseButtonCallback(window_->glfw_window(), mouse_button_callback);
     
     init_depthbuffer();
+    vk_renderpass_ = new vkc::Renderpass(*vk_core_, vk_swapchain_->format(), depth_image_format_);
     init_command();
-    init_renderpass();
+    //init_renderpass();
     init_framebuffer();
     init_sync_structures();
     init_texture_image();
@@ -90,7 +91,7 @@ Application::~Application() {
     vkDestroyPipeline(vk_core_->device(), graphics_pipeline_, nullptr);
     vkDestroyPipelineLayout(vk_core_->device(), graphics_pipeline_layout_, nullptr);
 
-    vkDestroyRenderPass(vk_core_->device(), render_pass_, nullptr);
+    vkDestroyRenderPass(vk_core_->device(), vk_renderpass_->renderpass(), nullptr);
 
     for(auto& frame_data : frame_data_) {
         vmaDestroyBuffer(vk_core_->allocator(), frame_data.camera_buffer.buffer, frame_data.camera_buffer.allocation);
@@ -176,67 +177,11 @@ void Application::init_command() {
     }
 }
 
-void Application::init_renderpass() {
-    const VkAttachmentDescription color_attachment = {
-        .format = vk_swapchain_->format(),
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-    };
-
-    const VkAttachmentReference color_attachment_ref = {
-        .attachment = 0,
-        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    };
-
-    const VkAttachmentDescription depth_attachment = {
-        .flags = 0,
-        .format = depth_image_format_,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-    };
-
-    const VkAttachmentReference depth_attachment_ref = {
-        .attachment = 1,
-        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-    };
-
-    const VkSubpassDescription subpass = {
-        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &color_attachment_ref,
-        .pDepthStencilAttachment = &depth_attachment_ref,
-    };
-
-    const VkAttachmentDescription attachments[] = {
-        color_attachment, depth_attachment
-    };
-
-    const VkRenderPassCreateInfo render_pass_info = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = 2,
-        .pAttachments = &attachments[0],
-        .subpassCount = 1,
-        .pSubpasses = &subpass,
-    };
-
-    vkCreateRenderPass(vk_core_->device(), &render_pass_info, nullptr, &render_pass_);
-}
-
 void Application::init_framebuffer() {
     VkFramebufferCreateInfo framebuffer_create_info = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .pNext = nullptr,
-        .renderPass = render_pass_,
+        .renderPass = vk_renderpass_->renderpass(),
         .attachmentCount = 1,
         .width = window_extent_.width, 
         .height = window_extent_.height, 
@@ -457,7 +402,7 @@ void Application::init_graphics_pipeline() {
 
     graphics_pipeline_ = vkc::create_graphics_pipeline(*vk_core_, vkc::GraphicsPipelineCreateInfo{
         .pipeline_layout = graphics_pipeline_layout_,
-        .render_pass = render_pass_,
+        .render_pass = vk_renderpass_->renderpass(),
         .window_extent = window_extent_,
         .shader_stages = &shader_stages[0],
         .shader_stage_count = 2,
@@ -504,7 +449,7 @@ void Application::render() {
     const VkRenderPassBeginInfo render_pass_begin_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = nullptr,
-        .renderPass = render_pass_,
+        .renderPass = vk_renderpass_->renderpass(),
         .renderArea.offset.x = 0,
         .renderArea.offset.y = 0,
         .renderArea.extent = window_extent_,
