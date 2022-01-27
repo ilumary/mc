@@ -86,7 +86,7 @@ Application::Application() {
 }
 
 Application::~Application() {
-    terrain_.destroy(*vk_core_);
+    block_.destroy(*vk_core_);
 
     vkDestroyPipeline(vk_core_->device(), graphics_pipeline_, nullptr);
     vkDestroyPipelineLayout(vk_core_->device(), graphics_pipeline_layout_, nullptr);
@@ -464,13 +464,13 @@ void Application::render() {
 
     VkDeviceSize offset = 0;
     
-    vkCmdBindVertexBuffers(cmd, 0, 1, &terrain_.vertex_buffer.buffer, &offset);
+    vkCmdBindVertexBuffers(cmd, 0, 1, &block_.vertex_buffer.buffer, &offset);
     
-    vkCmdBindIndexBuffer(cmd, terrain_.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(cmd, block_.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout_, 0, 1, &current_frame_data.global_descriptor, 0, nullptr);
 
-    vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(terrain_.indices.size()), 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(block_.indices.size()), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
@@ -509,7 +509,64 @@ void Application::render() {
 }
 
 void Application::load_mesh() {
-    upload_mesh(terrain_);
+    block_.vertices = {
+		{ { -1, -1, 1 },{ 0, 0, 1 },{ 0, 0 } }, //0
+		{ { -1, 1, 1 },{ 0, 0, 1 },{ 0, 1 } }, //3
+		{ { 1, -1, 1 },{ 0, 0, 1 },{ 1, 0 } }, //1
+		{ { 1, 1, 1 },{ 0, 0, 1 },{ 1, 1 } }, //2
+
+		//Back face
+		{ { 1, -1, -1 },{ 0, 0, -1 },{ 0, 0 } }, //7
+		{ { 1, 1, -1 },{ 0, 0, -1 },{ 0, 1 } }, //6
+		{ { -1, -1, -1 },{ 0, 0, -1 },{ 1, 0 } }, //4
+		{ { -1, 1, -1 },{ 0, 0, -1 },{ 1, 1 } }, //5
+			
+		//Top face
+		{ { -1, 1, 1 },{ 0, 1, 0 },{ 0, 0 } }, //9
+		{ { -1, 1, -1 },{ 0, 1, 0 },{ 0, 1 } }, //8
+		{ { 1, 1, 1 },{ 0, 1, 0 },{ 1, 0 } }, //10
+		{ { 1, 1, -1 },{ 0, 1, 0 },{ 1, 1 } }, //11
+
+		//Bottom face
+		{ { 1, -1, 1 },{ 0, -1, 0 },{ 0, 0 } }, //14
+		{ { 1, -1, -1 },{ 0, -1, 0 },{ 0, 1 } }, //13
+		{ { -1, -1, 1 },{ 0, -1, 0 },{ 1, 0 } }, //15
+		{ { -1, -1, -1 },{ 0, -1, 0 },{ 1, 1 } }, //12
+
+		//Right face
+		{ { 1, -1, 1 },{ 1, 0, 0 },{ 0, 0 } }, //19
+		{ { 1, 1, 1 },{ 1, 0, 0 },{ 0, 1 } }, //18
+		{ { 1, -1, -1 },{ 1, 0, 0 },{ 1, 0 } }, //16
+		{ { 1, 1, -1 },{ 1, 0, 0 },{ 1, 1 } }, //17
+
+		//Left face
+		{ { -1, -1, -1 },{ -1, 0, 0 },{ 0, 0 } }, //20
+		{ { -1, 1, -1 },{ -1, 0, 0 },{ 0, 1 } }, //23
+		{ { -1, -1, 1 },{ -1, 0, 0 },{ 1, 0 } }, //21
+		{ { -1, 1, 1 },{ -1, 0, 0 },{ 1, 1 } } //22
+	};
+
+    block_.indices = {
+		//Front face
+		0, 2, 3, 0, 3, 1,
+
+		//Back face
+		6, 7, 5, 6, 5, 4,
+
+		//Top face
+		9, 8, 10, 9, 10, 11,
+
+		//Bottom face
+		15, 13, 12, 15, 12, 14,
+
+		//Right face
+		18, 19, 17, 18, 17, 16,
+
+		//Left face
+		20, 22, 23, 20, 23, 21
+	};
+
+    upload_mesh(block_);
 }
 
 void Application::upload_mesh(Mesh& mesh) {

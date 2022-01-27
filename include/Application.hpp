@@ -7,7 +7,6 @@
 #include "vk_mem_alloc.h"
 
 #include "Camera.hpp"
-#include "Terrain.hpp"
 #include "Window.hpp"
 #include "Core.hpp"
 #include "Buffer.hpp"
@@ -16,6 +15,7 @@
 #include "GraphicsPipeline.hpp"
 #include "Renderpass.hpp"
 #include "Texture.hpp"
+#include "Mesh.hpp"
 
 #include <fmt/core.h>
 #include <glm/glm.hpp>
@@ -78,7 +78,7 @@ class Application {
     VkDescriptorSetLayout global_descriptor_set_layout_;
     VkDescriptorPool descriptor_pool_;
 
-    Terrain terrain_{};
+    Mesh block_{};
 
     Texture texture_;
     VkSampler textureSampler = VK_NULL_HANDLE;
