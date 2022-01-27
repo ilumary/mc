@@ -38,19 +38,19 @@ void Application::process_mouse_motion(float x, float y) {
 void Application::update_camera_position(int key) {
     if( key == GLFW_KEY_W) {
         cam_.keys.up = true;
-        cam_.update(0.5f);
+        cam_.update(delta_time_);
         cam_.keys.up = false;
     } else if( key == GLFW_KEY_A) {
         cam_.keys.left = true;
-        cam_.update(0.5f);
+        cam_.update(delta_time_);
         cam_.keys.left = false;
     } else if( key == GLFW_KEY_S) {
         cam_.keys.down = true;
-        cam_.update(0.5f);
+        cam_.update(delta_time_);
         cam_.keys.down = false;
     } else if( key == GLFW_KEY_D) {
         cam_.keys.right = true;
-        cam_.update(0.5f);
+        cam_.update(delta_time_);
         cam_.keys.right = false;
     }
 }
@@ -61,6 +61,7 @@ Application::Application() {
     vk_core_ = new vkc::Core(*window_);
     vk_swapchain_ = new vkc::Swapchain(*vk_core_, window_extent_);
 
+    cam_.setMovementSpeed(100.f);
     cam_.setPosition({ 0.f, 0.f,-2.f });
     cam_.setPerspective(70.f, 1400.f / 900.f, 0.1f, 200.f);
     cam_.type = Camera::CameraType::firstperson;
@@ -112,10 +113,23 @@ Application::~Application() {
 
 void Application::run() {
     while (!window_->should_close()) {
-        render();
-        window_->swap_buffers();
         window_->pull_events();
+        window_->swap_buffers();
+        update();
+        render();
+        
     }
+}
+
+void Application::update() {
+    double actual = glfwGetTime();
+	delta_time_ = (actual - time_) / 1000.0f;
+    if(delta_time_ < LOW_LIMIT) {
+        delta_time_ = LOW_LIMIT;
+    } else if(delta_time_ > HIGH_LIMIT) {
+        delta_time_ = HIGH_LIMIT;
+    }
+	time_ = actual;
 }
 
 void Application::init_depthbuffer() {

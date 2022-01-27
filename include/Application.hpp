@@ -54,6 +54,10 @@ class Application {
     Window* window_;
     VkExtent2D window_extent_{}; 
 
+    double time_{}, delta_time_{};
+    float LOW_LIMIT = 0.0167f;
+    float HIGH_LIMIT = 0.1f;
+
     vkc::Core* vk_core_;
     vkc::Swapchain* vk_swapchain_;
 
@@ -113,6 +117,7 @@ private:
 
     FrameData& get_current_frame();
 
+    void update();
     void render();
     void load_mesh();
     void upload_mesh(Mesh& mesh);
