@@ -4,6 +4,8 @@
 #include "Mesh.hpp"
 #include "Chunk.hpp"
 
+#include <fmt/core.h>
+
 class World;
 
 class ChunkMesh : public Mesh {
@@ -12,7 +14,7 @@ public:
 
     //holds the texture uv's for all block types
     const glm::vec4 block_uvs[1] = {
-        calculate_uv(0, 0, 1) // DIRT
+        calculate_uv(0, 0, 1), // DIRT
     };
 
     //calculates uv cords of given texture size
