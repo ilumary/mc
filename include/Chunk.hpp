@@ -3,8 +3,6 @@
 
 #include <glm/glm.hpp>
 
-namespace gen {
-
 class Chunk {
 
 public:
@@ -32,7 +30,5 @@ public:
     //returns height of position in chunk
     int get_height(glm::vec2 position);
 };
-
-}
 
 #endif // CHUNK_HPP

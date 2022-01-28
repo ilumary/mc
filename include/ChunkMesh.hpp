@@ -6,15 +6,13 @@
 
 class World;
 
-namespace gen {
-
 class ChunkMesh : public Mesh {
 
 public:
 
     //holds the texture uv's for all block types
     const glm::vec4 block_uvs[1] = {
-        calculate_uv(0, 1, 1) // DIRT
+        calculate_uv(0, 0, 1) // DIRT
     };
 
     //calculates uv cords of given texture size
@@ -23,7 +21,5 @@ public:
     //generate geometry data for given chunk
     void generate(Chunk* chunk, World* world);
 };
-
-}
 
 #endif // CHUNKMESH_HPP

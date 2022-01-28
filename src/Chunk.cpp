@@ -1,7 +1,5 @@
 #include "Chunk.hpp"
 
-namespace gen {
-
 void Chunk::set_chunk_position(glm::vec3 new_position) {
     chunk_position_ = new_position;
 }
@@ -15,6 +13,4 @@ void Chunk::generate_chunk_data() {
             }
         }
     }
-}
-
 }

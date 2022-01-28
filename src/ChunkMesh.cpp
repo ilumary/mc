@@ -1,7 +1,5 @@
 #include "ChunkMesh.hpp"
 
-namespace gen {
-
 glm::vec4 ChunkMesh::calculate_uv(int x, int y, int size) {
     float step = 1.0 / size;
 	return glm::vec4(step * x, step * y, step * x + step, step * y + step);
@@ -50,6 +48,7 @@ void ChunkMesh::generate(Chunk* chunk, World* world) {
 						vertices.push_back({ { nx, py, nz },{ 0, 1, 0 },{ block_uvs[value].z, block_uvs[value].y } });
 						vertices.push_back({ { px, py, pz },{ 0, 1, 0 },{ block_uvs[value].x, block_uvs[value].w } });
 						vertices.push_back({ { px, py, nz },{ 0, 1, 0 },{ block_uvs[value].z, block_uvs[value].w } });
+
 						size += 4;
 					}
 
@@ -136,6 +135,4 @@ void ChunkMesh::generate(Chunk* chunk, World* world) {
 			}
 		}
 	}
-}
-
 }
