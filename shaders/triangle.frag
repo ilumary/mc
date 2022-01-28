@@ -11,7 +11,7 @@ layout (location = 0) out vec4 outFragColor;
 const vec3 lightPos = vec3(10.0, 10.0, 0.0);
 
 void main() {
-    vec3 baseColor = vec3(0.4, 0.9, 0.4);
+    vec3 baseColor = vec3(0.9, 0.9, 0.9);
     vec3 ambient = 0.05 * baseColor;
 
     vec3 lightDir = normalize(lightPos - inPos);
