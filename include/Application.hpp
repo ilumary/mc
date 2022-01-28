@@ -16,6 +16,7 @@
 #include "Renderpass.hpp"
 #include "Texture.hpp"
 #include "Mesh.hpp"
+#include "World.hpp"
 
 #include <fmt/core.h>
 #include <glm/glm.hpp>
@@ -79,6 +80,7 @@ class Application {
     VkDescriptorPool descriptor_pool_;
 
     Mesh block_{};
+    World world_ = World();
 
     Texture texture_;
     VkSampler textureSampler = VK_NULL_HANDLE;

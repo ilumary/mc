@@ -509,7 +509,9 @@ void Application::render() {
 }
 
 void Application::load_mesh() {
-    block_.vertices = {
+    block_ = *(world_.getMeshes());
+
+    /*block_.vertices = {
 		{ { -1, -1, 1 },{ 0, 0, 1 },{ 0, 0 } }, //0
 		{ { -1, 1, 1 },{ 0, 0, 1 },{ 0, 1 } }, //3
 		{ { 1, -1, 1 },{ 0, 0, 1 },{ 1, 0 } }, //1
@@ -564,7 +566,7 @@ void Application::load_mesh() {
 
 		//Left face
 		20, 22, 23, 20, 23, 21
-	};
+	};*/
 
     upload_mesh(block_);
 }
