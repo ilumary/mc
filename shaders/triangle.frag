@@ -21,5 +21,4 @@ void main() {
 
     outFragColor = texture(texSampler, inTextCord);
     outFragColor.rgb *= (ambient + diffuse);
-    //outFragColor = vec4(ambient + diffuse, 1.f);
 }

@@ -79,7 +79,7 @@ class Application {
     VkDescriptorSetLayout global_descriptor_set_layout_;
     VkDescriptorPool descriptor_pool_;
 
-    Mesh block_{};
+    Mesh world_mesh_{};
     World world_ = World();
 
     Texture texture_;

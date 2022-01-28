@@ -61,10 +61,11 @@ Application::Application() {
     vk_core_ = new vkc::Core(*window_);
     vk_swapchain_ = new vkc::Swapchain(*vk_core_, window_extent_);
 
-    cam_.setMovementSpeed(100.f);
-    cam_.setPosition({ 0.f, 0.f,-2.f });
+    cam_.setMovementSpeed(10.f);
+    cam_.setPosition({ 0.f, 0.f, -1.f });
     cam_.setPerspective(70.f, 1400.f / 900.f, 0.1f, 200.f);
     cam_.type = Camera::CameraType::firstperson;
+    cam_.update(1.f);
 
     glfwMakeContextCurrent(window_->glfw_window());
     glfwSetWindowUserPointer(window_->glfw_window(), this);
@@ -75,7 +76,6 @@ Application::Application() {
     init_depthbuffer();
     vk_renderpass_ = new vkc::Renderpass(*vk_core_, vk_swapchain_->format(), depth_image_format_);
     init_command();
-    //init_renderpass();
     init_framebuffer();
     init_sync_structures();
     init_texture_image();
@@ -86,7 +86,7 @@ Application::Application() {
 }
 
 Application::~Application() {
-    block_.destroy(*vk_core_);
+    world_mesh_.destroy(*vk_core_);
 
     vkDestroyPipeline(vk_core_->device(), graphics_pipeline_, nullptr);
     vkDestroyPipelineLayout(vk_core_->device(), graphics_pipeline_layout_, nullptr);
@@ -114,11 +114,10 @@ Application::~Application() {
 
 void Application::run() {
     while (!window_->should_close()) {
-        window_->pull_events();
-        window_->swap_buffers();
         update();
         render();
-        
+        window_->swap_buffers();
+        window_->pull_events();
     }
 }
 
@@ -202,7 +201,7 @@ void Application::init_framebuffer() {
 void Application::init_texture_image() {
     int texWidth, texHeight, texChannels;
 
-	stbi_uc* pixels = stbi_load("../../textures/uv.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	stbi_uc* pixels = stbi_load("../../textures/minecraft.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
     if (!pixels) { fmt::print("Failed to load texture file\n"); }
 
@@ -464,13 +463,13 @@ void Application::render() {
 
     VkDeviceSize offset = 0;
     
-    vkCmdBindVertexBuffers(cmd, 0, 1, &block_.vertex_buffer.buffer, &offset);
+    vkCmdBindVertexBuffers(cmd, 0, 1, &world_mesh_.vertex_buffer.buffer, &offset);
     
-    vkCmdBindIndexBuffer(cmd, block_.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(cmd, world_mesh_.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout_, 0, 1, &current_frame_data.global_descriptor, 0, nullptr);
 
-    vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(block_.indices.size()), 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(world_mesh_.indices.size()), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
@@ -509,51 +508,52 @@ void Application::render() {
 }
 
 void Application::load_mesh() {
-    block_ = *(world_.getMeshes());
+    //world_mesh_ = *(world_.getMeshes());
 
-    /*block_.vertices = {
-		{ { -1, -1, 1 },{ 0, 0, 1 },{ 0, 0 } }, //0
-		{ { -1, 1, 1 },{ 0, 0, 1 },{ 0, 1 } }, //3
-		{ { 1, -1, 1 },{ 0, 0, 1 },{ 1, 0 } }, //1
-		{ { 1, 1, 1 },{ 0, 0, 1 },{ 1, 1 } }, //2
+    world_mesh_.vertices = {
+		//Front face
+		{ { 0, 0, 0 },{ 1, 0, 0 },{ 0, 1 } }, 
+		{ { 0, -1, 0 },{ 1, 0, 0 },{ 0, 0 } }, 
+		{ { 1, -1, 0 },{ 1, 0, 0 },{ 1, 0 } }, 
+		{ { 1, 0, 0 },{ 1, 0, 0 },{ 1, 1 } }, 
 
 		//Back face
-		{ { 1, -1, -1 },{ 0, 0, -1 },{ 0, 0 } }, //7
-		{ { 1, 1, -1 },{ 0, 0, -1 },{ 0, 1 } }, //6
-		{ { -1, -1, -1 },{ 0, 0, -1 },{ 1, 0 } }, //4
-		{ { -1, 1, -1 },{ 0, 0, -1 },{ 1, 1 } }, //5
+		/*{ { 0, 0, -1 },{ 0, 0, -1 },{ 0, 0 } }, //
+		{ { 1, 0, -1 },{ 0, 0, -1 },{ 0, 1 } }, //
+		{ { 0, 1, -1 },{ 0, 0, -1 },{ 1, 0 } }, //
+		{ { 1, 1, -1 },{ 0, 0, -1 },{ 1, 1 } }, //
 			
 		//Top face
-		{ { -1, 1, 1 },{ 0, 1, 0 },{ 0, 0 } }, //9
-		{ { -1, 1, -1 },{ 0, 1, 0 },{ 0, 1 } }, //8
-		{ { 1, 1, 1 },{ 0, 1, 0 },{ 1, 0 } }, //10
-		{ { 1, 1, -1 },{ 0, 1, 0 },{ 1, 1 } }, //11
+		{ { -1, 1, 1 },{ 0, 1, 0 },{ 0, 0 } }, //
+		{ { -1, 1, -1 },{ 0, 1, 0 },{ 0, 1 } }, //
+		{ { 1, 1, 1 },{ 0, 1, 0 },{ 1, 0 } }, //
+		{ { 1, 1, -1 },{ 0, 1, 0 },{ 1, 1 } }, //
 
 		//Bottom face
-		{ { 1, -1, 1 },{ 0, -1, 0 },{ 0, 0 } }, //14
-		{ { 1, -1, -1 },{ 0, -1, 0 },{ 0, 1 } }, //13
-		{ { -1, -1, 1 },{ 0, -1, 0 },{ 1, 0 } }, //15
-		{ { -1, -1, -1 },{ 0, -1, 0 },{ 1, 1 } }, //12
+		{ { 1, -1, 1 },{ 0, -1, 0 },{ 0, 0 } }, //
+		{ { 1, -1, -1 },{ 0, -1, 0 },{ 0, 1 } }, //
+		{ { -1, -1, 1 },{ 0, -1, 0 },{ 1, 0 } }, //
+		{ { -1, -1, -1 },{ 0, -1, 0 },{ 1, 1 } }, //
 
 		//Right face
-		{ { 1, -1, 1 },{ 1, 0, 0 },{ 0, 0 } }, //19
-		{ { 1, 1, 1 },{ 1, 0, 0 },{ 0, 1 } }, //18
-		{ { 1, -1, -1 },{ 1, 0, 0 },{ 1, 0 } }, //16
-		{ { 1, 1, -1 },{ 1, 0, 0 },{ 1, 1 } }, //17
+		{ { 1, -1, 1 },{ 1, 0, 0 },{ 0, 0 } }, //
+		{ { 1, 1, 1 },{ 1, 0, 0 },{ 0, 1 } }, //
+		{ { 1, -1, -1 },{ 1, 0, 0 },{ 1, 0 } }, //
+		{ { 1, 1, -1 },{ 1, 0, 0 },{ 1, 1 } }, //
 
 		//Left face
-		{ { -1, -1, -1 },{ -1, 0, 0 },{ 0, 0 } }, //20
-		{ { -1, 1, -1 },{ -1, 0, 0 },{ 0, 1 } }, //23
-		{ { -1, -1, 1 },{ -1, 0, 0 },{ 1, 0 } }, //21
-		{ { -1, 1, 1 },{ -1, 0, 0 },{ 1, 1 } } //22
+		{ { -1, -1, -1 },{ -1, 0, 0 },{ 0, 0 } }, //
+		{ { -1, 1, -1 },{ -1, 0, 0 },{ 0, 1 } }, //
+		{ { -1, -1, 1 },{ -1, 0, 0 },{ 1, 0 } }, //
+		{ { -1, 1, 1 },{ -1, 0, 0 },{ 1, 1 } } //*/
 	};
 
-    block_.indices = {
+    world_mesh_.indices = {
 		//Front face
-		0, 2, 3, 0, 3, 1,
+        0, 1, 2, 2, 3, 0, 
 
 		//Back face
-		6, 7, 5, 6, 5, 4,
+		/*6, 7, 5, 6, 5, 4,
 
 		//Top face
 		9, 8, 10, 9, 10, 11,
@@ -565,10 +565,10 @@ void Application::load_mesh() {
 		18, 19, 17, 18, 17, 16,
 
 		//Left face
-		20, 22, 23, 20, 23, 21
-	};*/
+		20, 22, 23, 20, 23, 21*/
+	};
 
-    upload_mesh(block_);
+    upload_mesh(world_mesh_);
 }
 
 void Application::upload_mesh(Mesh& mesh) {
