@@ -17,7 +17,8 @@ public:
     enum BlockType {
         CLEAR = 0,
         DIRT = 1,
-        STONE = 2,
+        GRASS = 2,
+        STONE = 3,
     };
 
     //represents one chunk
@@ -34,8 +35,12 @@ public:
     //generate chunk data
     void generate_chunk_data();
 
+private:
     //returns height of position in chunk
     int get_surface_height(glm::vec2 position);
+
+    //returns block type corresponding to height
+    BlockType get_block_type(glm::vec3 position, uint32_t terrain_height);
 };
 
 #endif // CHUNK_HPP
