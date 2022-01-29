@@ -13,8 +13,9 @@ class ChunkMesh : public Mesh {
 public:
 
     //holds the texture uv's for all block types
-    const glm::vec4 block_uvs[2] = {
+    const glm::vec4 block_uvs[3] = {
         calculate_uv(2, 0, 16), // DIRT
+        calculate_uv(3, 0, 16), // GRASS
         calculate_uv(1, 0, 16) // STONE
     };
 
