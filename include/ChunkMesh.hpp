@@ -4,6 +4,8 @@
 #include "Mesh.hpp"
 #include "Chunk.hpp"
 
+#include <iostream>
+
 class World;
 
 class ChunkMesh : public Mesh {

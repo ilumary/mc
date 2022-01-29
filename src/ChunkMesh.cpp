@@ -56,8 +56,8 @@ void ChunkMesh::generate(Chunk* chunk, World* world) {
 						size += 4;
 					}
 
-					//Top Face
-					if (y == (Chunk::SIZE * -1) + 1 || chunk->chunk_data_[x][y + 1][z] == Chunk::BlockType::CLEAR) {
+					//Top face
+					if (y == Chunk::SIZE - 1 || chunk->chunk_data_[x][y + 1][z] == Chunk::BlockType::CLEAR) {
 						add_block_side_indices(index_constants, size);
 
 						vertices.push_back({ { nx, py, nz },{ 0, -1, 0 },{ block_uvs[value - 1].x, block_uvs[value - 1].w } });
@@ -67,7 +67,7 @@ void ChunkMesh::generate(Chunk* chunk, World* world) {
 						size += 4;
 					}
 
-					//Bottom face
+					//Top face
 					if (y == 0 || chunk->chunk_data_[x][y - 1][z] == Chunk::BlockType::CLEAR) {
 						add_block_side_indices(index_constants, size);
 
