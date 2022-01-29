@@ -4,8 +4,6 @@
 #include "Mesh.hpp"
 #include "Chunk.hpp"
 
-#include <iostream>
-
 class World;
 
 class ChunkMesh : public Mesh {
@@ -23,6 +21,10 @@ public:
 
     //generate geometry data for given chunk
     void generate(Chunk* chunk, World* world);
+
+private: 
+    //function streamlines index pushing for better understanding
+    void add_block_side_indices(uint32_t push_indices[6], uint32_t size);
 };
 
 #endif // CHUNKMESH_HPP
