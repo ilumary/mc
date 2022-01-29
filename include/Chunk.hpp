@@ -1,7 +1,11 @@
 #ifndef CHUNK_HPP
 #define CHUNK_HPP
 
+#include "PerlinNoise.hpp"
+
 #include <glm/glm.hpp>
+
+#include <iostream>
 
 class Chunk {
 
@@ -13,10 +17,13 @@ public:
     enum BlockType {
         CLEAR = 0,
         DIRT = 1,
+        STONE = 2,
     };
 
     //represents one chunk
     int chunk_data_[SIZE][SIZE][SIZE];
+
+    PerlinNoise pn = PerlinNoise(123456);
 
     //chunk position relative to other chunks
     glm::vec3 chunk_position_{};
@@ -28,7 +35,7 @@ public:
     void generate_chunk_data();
 
     //returns height of position in chunk
-    int get_height(glm::vec2 position);
+    int get_surface_height(glm::vec2 position);
 };
 
 #endif // CHUNK_HPP
