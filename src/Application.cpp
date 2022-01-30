@@ -57,12 +57,12 @@ void Application::update_camera_position(int key) {
 
 Application::Application() {
     window_extent_ = VkExtent2D{1400, 900};
-    window_ = new Window(window_extent_.width, window_extent_.height, "Voxel Simulation");
+    window_ = new Window(window_extent_.width, window_extent_.height, "");
     vk_core_ = new vkc::Core(*window_);
     vk_swapchain_ = new vkc::Swapchain(*vk_core_, window_extent_);
 
-    cam_.setMovementSpeed(10.f);
-    cam_.setPosition({ 0.f, 0.f, -1.f });
+    cam_.setMovementSpeed(100.f);
+    cam_.setPosition({ 0.f, 20.f, -1.f });
     cam_.setPerspective(70.f, 1400.f / 900.f, 0.1f, 200.f);
     cam_.type = Camera::CameraType::firstperson;
     cam_.update(1.f);
@@ -123,7 +123,22 @@ void Application::run() {
 
 void Application::update() {
     double actual = glfwGetTime();
+    double delta = actual - last_cout_;
 	delta_time_ = (actual - time_) / 1000.0f;
+    frame_number_per_second_ += 1;
+
+    if(delta >= 1.f) { 
+        double fps = double(frame_number_per_second_) / delta;
+
+        std::stringstream ss;
+        ss << "Voxel Simulation " << " [" << fps << " FPS]";
+
+        glfwSetWindowTitle(window_->glfw_window(), ss.str().c_str());
+
+        frame_number_per_second_ = 0;
+        last_cout_ = actual;
+    }
+    
     if(delta_time_ < LOW_LIMIT) {
         delta_time_ = LOW_LIMIT;
     } else if(delta_time_ > HIGH_LIMIT) {
@@ -201,7 +216,7 @@ void Application::init_framebuffer() {
 void Application::init_texture_image() {
     int texWidth, texHeight, texChannels;
 
-	stbi_uc* pixels = stbi_load("../../textures/minecraft.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	stbi_uc* pixels = stbi_load("../../textures/minecraft.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
     if (!pixels) { fmt::print("Failed to load texture file\n"); }
 
@@ -508,65 +523,7 @@ void Application::render() {
 }
 
 void Application::load_mesh() {
-    //world_mesh_ = *(world_.getMeshes());
-
-    world_mesh_.vertices = {
-		//Front face
-		{ { 0, 0, 0 },{ 1, 0, 0 },{ 0, 1 } }, 
-		{ { 0, -1, 0 },{ 1, 0, 0 },{ 0, 0 } }, 
-		{ { 1, -1, 0 },{ 1, 0, 0 },{ 1, 0 } }, 
-		{ { 1, 0, 0 },{ 1, 0, 0 },{ 1, 1 } }, 
-
-		//Back face
-		/*{ { 0, 0, -1 },{ 0, 0, -1 },{ 0, 0 } }, //
-		{ { 1, 0, -1 },{ 0, 0, -1 },{ 0, 1 } }, //
-		{ { 0, 1, -1 },{ 0, 0, -1 },{ 1, 0 } }, //
-		{ { 1, 1, -1 },{ 0, 0, -1 },{ 1, 1 } }, //
-			
-		//Top face
-		{ { -1, 1, 1 },{ 0, 1, 0 },{ 0, 0 } }, //
-		{ { -1, 1, -1 },{ 0, 1, 0 },{ 0, 1 } }, //
-		{ { 1, 1, 1 },{ 0, 1, 0 },{ 1, 0 } }, //
-		{ { 1, 1, -1 },{ 0, 1, 0 },{ 1, 1 } }, //
-
-		//Bottom face
-		{ { 1, -1, 1 },{ 0, -1, 0 },{ 0, 0 } }, //
-		{ { 1, -1, -1 },{ 0, -1, 0 },{ 0, 1 } }, //
-		{ { -1, -1, 1 },{ 0, -1, 0 },{ 1, 0 } }, //
-		{ { -1, -1, -1 },{ 0, -1, 0 },{ 1, 1 } }, //
-
-		//Right face
-		{ { 1, -1, 1 },{ 1, 0, 0 },{ 0, 0 } }, //
-		{ { 1, 1, 1 },{ 1, 0, 0 },{ 0, 1 } }, //
-		{ { 1, -1, -1 },{ 1, 0, 0 },{ 1, 0 } }, //
-		{ { 1, 1, -1 },{ 1, 0, 0 },{ 1, 1 } }, //
-
-		//Left face
-		{ { -1, -1, -1 },{ -1, 0, 0 },{ 0, 0 } }, //
-		{ { -1, 1, -1 },{ -1, 0, 0 },{ 0, 1 } }, //
-		{ { -1, -1, 1 },{ -1, 0, 0 },{ 1, 0 } }, //
-		{ { -1, 1, 1 },{ -1, 0, 0 },{ 1, 1 } } //*/
-	};
-
-    world_mesh_.indices = {
-		//Front face
-        0, 1, 2, 2, 3, 0, 
-
-		//Back face
-		/*6, 7, 5, 6, 5, 4,
-
-		//Top face
-		9, 8, 10, 9, 10, 11,
-
-		//Bottom face
-		15, 13, 12, 15, 12, 14,
-
-		//Right face
-		18, 19, 17, 18, 17, 16,
-
-		//Left face
-		20, 22, 23, 20, 23, 21*/
-	};
+    world_mesh_ = *(world_.getWorldMesh());
 
     upload_mesh(world_mesh_);
 }

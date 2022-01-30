@@ -23,6 +23,7 @@
 
 #include <vector>
 #include <cmath>
+#include <sstream>
 
 #define VK_CHECK(x)                                     \
     do {                                                \
@@ -56,8 +57,8 @@ class Application {
     Window* window_;
     VkExtent2D window_extent_{}; 
 
-    double time_{}, delta_time_{};
-    float LOW_LIMIT = 0.0167f;
+    double time_{}, delta_time_{}, last_cout_{};
+    float LOW_LIMIT = 0.0069f;
     float HIGH_LIMIT = 0.1f;
 
     vkc::Core* vk_core_;
@@ -68,6 +69,7 @@ class Application {
 
     FrameData frame_data_[frames_in_flight]{};
     uint32_t frame_number_ = 0;
+    uint32_t frame_number_per_second_ = 0;
 
     VkPipelineLayout graphics_pipeline_layout_{};
     VkPipeline graphics_pipeline_{};
