@@ -24,6 +24,7 @@ public:
     //represents one chunk
     int chunk_data_[SIZE][SIZE][SIZE];
 
+    //used for terrain generation
     PerlinNoise pn = PerlinNoise(123456);
 
     //chunk position relative to other chunks

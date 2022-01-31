@@ -26,12 +26,13 @@ int Chunk::get_surface_height(glm::vec2 position) {
 }
 
 Chunk::BlockType Chunk::get_block_type(glm::vec3 position, uint32_t terrain_height) {
-    int grass_depth = terrain_height - 3;
+    double n = 3 * pn.noise(position.x / SIZE, position.y / SIZE, 0.99);
+    int grass_depth = terrain_height - 3 - n;
     if(position.y - grass_depth < 0) {
         return Chunk::BlockType::STONE;
-    } else if(position.y - grass_depth == 2) {
+    } else if(position.y == terrain_height - 1) {
         return Chunk::BlockType::GRASS;
     } else {
-        return Chunk::BlockType::DIRT;
+        return Chunk::BlockType::DIRT; 
     }
 }
