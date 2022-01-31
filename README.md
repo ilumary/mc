@@ -15,7 +15,6 @@ Planned:
 - Add placing/destruction of blocks
 - Divide terrain into chunks with dynamic loading/unloading
 - Implement some kind of better lightning system
-- Add different Blocks
 - Add water and corresponding physics 
 
 ## Tech
