@@ -62,7 +62,7 @@ Application::Application() {
     vk_swapchain_ = new vkc::Swapchain(*vk_core_, window_extent_);
 
     cam_.setMovementSpeed(100.f);
-    cam_.setPosition({ 0.f, 20.f, -1.f });
+    cam_.setPosition({ 0.f, 20.f, 0.f });
     cam_.setPerspective(70.f, 1400.f / 900.f, 0.1f, 200.f);
     cam_.type = Camera::CameraType::firstperson;
     cam_.update(1.f);
@@ -523,7 +523,7 @@ void Application::render() {
 }
 
 void Application::load_mesh() {
-    world_mesh_ = *(world_.getWorldMesh());
+    world_mesh_ = *(world_.getWorldMesh(cam_.position, 1));
 
     upload_mesh(world_mesh_);
 }
