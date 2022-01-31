@@ -8,6 +8,16 @@ class ChunkNode {
 
 public:
 
+    //defines chunk neighbor positions in neighbors_ vector
+    enum RelativeChunkPosition {
+        NORTH = 0,
+        EAST = 1,
+        SOUTH = 2,
+        WEST = 3,
+        UP = 4,
+        DOWN = 5,
+    };
+
     //represents all possible states of one chunk
     enum ChunkState {
         UNINITIALIZED = 0,
@@ -18,14 +28,25 @@ public:
     //represents current chunk state
     int node_state_;
 
+    glm::vec3 node_position_;
+
     //holds chunk data of node
     Chunk chunk;
 
     //holds chunk gemotry of node
     ChunkMesh* geometry_;
 
+    //holds pointers to all neighboring chunk nodes 
+    std::vector<ChunkNode*> neighbors_ = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+
     //initialise new chunk node
-    ChunkNode();
+    ChunkNode(glm::vec3 position);
+
+    //creates chunk data recursively 
+    void create_node_neighbors_recursively(int distance);
+
+    //
+    void get_nodes_recursive(std::vector<ChunkNode*> *nodes, int distance);
 
     //generate data for this node
     void generateData();
