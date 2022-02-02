@@ -18,7 +18,6 @@ void ChunkNode::create_node_neighbors_recursively(int distance) {
 		neighbors_[ChunkNode::EAST] = new ChunkNode({node_position_.x + 1, node_position_.y, node_position_.z});
 		neighbors_[ChunkNode::EAST]->neighbors_[ChunkNode::WEST] = this;
 	}
-
 	//Z + 1 NORTH
 	if (neighbors_[ChunkNode::NORTH] == nullptr) {
 		neighbors_[ChunkNode::NORTH] = new ChunkNode({node_position_.x, node_position_.y, node_position_.z + 1});
@@ -49,8 +48,17 @@ void ChunkNode::create_node_neighbors_recursively(int distance) {
 }
 
 void ChunkNode::get_nodes_recursive(std::vector<ChunkNode*> *nodes, int distance) {
-	for(int i = 0; i < 4; ++i) {
-		nodes->push_back(neighbors_[i]);
+	//for every new node, search existing array if it exists, only add if not
+	bool found = false;
+	for (unsigned int i = 0; i < nodes->size(); i++) {
+		if ((*nodes)[i]->node_position_ == node_position_) {
+			found = true;
+			break;
+		}
+	}
+	
+	if (found == false) {
+		nodes->push_back(this);
 	}
 
 	if (distance > 0) {
