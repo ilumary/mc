@@ -37,7 +37,7 @@ public:
     ChunkMesh* geometry_;
 
     //holds pointers to all neighboring chunk nodes 
-    std::vector<ChunkNode*> neighbors_ = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+    ChunkNode* neighbors_[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 
     //initialise new chunk node
     ChunkNode(glm::vec3 position);
@@ -45,7 +45,7 @@ public:
     //creates chunk data recursively 
     void create_node_neighbors_recursively(int distance);
 
-    //
+    //traverses recursively through the nodes, each checking if it already exists within vector
     void get_nodes_recursive(std::vector<ChunkNode*> *nodes, int distance);
 
     //generate data for this node
