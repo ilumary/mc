@@ -4,6 +4,8 @@
 #include "ChunkNode.hpp"
 #include "Mesh.hpp"
 
+#include <fmt/core.h>
+
 class World {
     
 public:
@@ -11,7 +13,7 @@ public:
     ChunkNode* root_;
 
     //combined mesh of all terrain vertices
-    //Mesh* mesh_;
+    Mesh mesh_;
 
     //constructor creates root ChunkNode Object
     World();

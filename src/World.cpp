@@ -19,20 +19,28 @@ Mesh* World::getWorldMesh(glm::vec3 position, int distance) {
     
     //get all neighbors
     std::vector<ChunkNode*> nodes;
-    nodes.push_back(current);
     current->get_nodes_recursive(&nodes, distance);
+
+    fmt::print("Got {} nodes\n", nodes.size());
+    for(int i = 0; i < nodes.size(); i++) {
+        fmt::print("Node No {} with pos {} {} {}\n", i, nodes[i]->node_position_.x, nodes[i]->node_position_.y, nodes[i]->node_position_.z);
+    }
 
     //get all neighbors meshes
     std::vector<Mesh*> meshes;
-    meshes.push_back(current->getGeometry(this));
-
-    for(std::vector<ChunkNode*>::iterator it = nodes.begin(); it != nodes.end(); ++it) {
-        //meshes.push_back((*it).getGeometry(this));
+    for(std::size_t i = 0; i < nodes.size(); ++i) {
+        meshes.push_back(nodes[i]->getGeometry(this));
+        fmt::print("Pushing back {} vertices to node with pos {} {} {}\n", nodes[i]->geometry_->vertices.size(), nodes[i]->node_position_.x, nodes[i]->node_position_.y, nodes[i]->node_position_.z);
     }
+    fmt::print("Got {} meshes\n", meshes.size());
 
     //merge meshes
-
-    return root_->getGeometry(this);
+    int indice_count = 0;
+    for(std::size_t i = 0; i < meshes.size(); ++i) {
+        mesh_.merge(meshes.at(i));
+    }
+    
+    return &mesh_;
 }
 
 glm::vec3 World::get_current_node_index_of_position(glm::vec3 position) {
