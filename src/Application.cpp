@@ -62,7 +62,8 @@ Application::Application() {
     vk_swapchain_ = new vkc::Swapchain(*vk_core_, window_extent_);
 
     cam_.setMovementSpeed(100.f);
-    cam_.setPosition({ 0.f, 20.f, 0.f });
+    cam_.setPosition({ 0.f, 2.f, 0.f });
+    cam_.setRotation({ 0.f, 90.f, 0.f });
     cam_.setPerspective(70.f, 1400.f / 900.f, 0.1f, 200.f);
     cam_.type = Camera::CameraType::firstperson;
     cam_.update(1.f);
@@ -86,7 +87,7 @@ Application::Application() {
 }
 
 Application::~Application() {
-    world_mesh_.destroy(*vk_core_);
+    world_mesh_->destroy(*vk_core_);
 
     vkDestroyPipeline(vk_core_->device(), graphics_pipeline_, nullptr);
     vkDestroyPipelineLayout(vk_core_->device(), graphics_pipeline_layout_, nullptr);
@@ -478,13 +479,13 @@ void Application::render() {
 
     VkDeviceSize offset = 0;
     
-    vkCmdBindVertexBuffers(cmd, 0, 1, &world_mesh_.vertex_buffer.buffer, &offset);
+    vkCmdBindVertexBuffers(cmd, 0, 1, &world_mesh_->vertex_buffer.buffer, &offset);
     
-    vkCmdBindIndexBuffer(cmd, world_mesh_.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(cmd, world_mesh_->index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout_, 0, 1, &current_frame_data.global_descriptor, 0, nullptr);
 
-    vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(world_mesh_.indices.size()), 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(world_mesh_->indices.size()), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
@@ -523,23 +524,23 @@ void Application::render() {
 }
 
 void Application::load_mesh() {
-    world_mesh_ = *(world_.getWorldMesh(cam_.position, 1));
+    world_mesh_ = world_.getWorldMesh(cam_.position, 1);
 
     upload_mesh(world_mesh_);
 }
 
-void Application::upload_mesh(Mesh& mesh) {
-    mesh.vertex_buffer = vkc::create_buffer_from_data(*vk_core_, {
-        .alloc_size = mesh.vertices.size() * sizeof(Vertex),
+void Application::upload_mesh(Mesh* mesh) {
+    mesh->vertex_buffer = vkc::create_buffer_from_data(*vk_core_, {
+        .alloc_size = mesh->vertices.size() * sizeof(Vertex),
         .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-    }, mesh.vertices.data());
+    }, mesh->vertices.data());
 
-    mesh.index_buffer = vkc::create_buffer_from_data(*vk_core_, {
-        .alloc_size = mesh.indices.size() * sizeof(std::uint32_t),
+    mesh->index_buffer = vkc::create_buffer_from_data(*vk_core_, {
+        .alloc_size = mesh->indices.size() * sizeof(std::uint32_t),
         .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         .memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-    }, mesh.indices.data());
+    }, mesh->indices.data());
 }
 
 FrameData& Application::get_current_frame() {

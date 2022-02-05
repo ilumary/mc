@@ -81,7 +81,7 @@ class Application {
     VkDescriptorSetLayout global_descriptor_set_layout_;
     VkDescriptorPool descriptor_pool_;
 
-    Mesh world_mesh_{};
+    Mesh* world_mesh_{};
     World world_ = World();
 
     Texture texture_;
@@ -124,7 +124,7 @@ private:
     void update();
     void render();
     void load_mesh();
-    void upload_mesh(Mesh& mesh);
+    void upload_mesh(Mesh* mesh);
 };
 
 #endif // APPLICATION_HPP
