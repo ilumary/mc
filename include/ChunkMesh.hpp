@@ -15,7 +15,7 @@ public:
     //holds the texture uv's for all block types
     const glm::vec4 block_uvs[3] = {
         calculate_uv(2, 0, 16), // DIRT
-        calculate_uv(3, 0, 16), // GRASS
+        calculate_uv(0, 0, 16), // GRASS
         calculate_uv(1, 0, 16) // STONE
     };
 
@@ -23,7 +23,7 @@ public:
     static glm::vec4 calculate_uv(int x, int y, int size);
 
     //generate geometry data for given chunk
-    void generate(Chunk* chunk, World* world);
+    void generate(Chunk& chunk, World* world);
 
 private: 
     //function streamlines index pushing for better understanding
