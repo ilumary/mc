@@ -1,18 +1,24 @@
 #include "Mesh.hpp"
 
+#include <iostream>
+
 void Mesh::destroy(vkc::Core& core) {
     vmaDestroyBuffer(core.allocator(), index_buffer.buffer, index_buffer.allocation);
     vmaDestroyBuffer(core.allocator(), vertex_buffer.buffer, vertex_buffer.allocation);
 }
 
 void Mesh::merge(const Mesh* other) {
-    for(std::size_t i = 0; i < other->vertices.size(); ++i) {
-        vertices.push_back(other->vertices[i]);
+    std::cout << "Merging Mesh with " << other->vertices.size() << " other vertices." << std::endl;
+
+    vertices.insert(vertices.end(), other->vertices.begin(), other->vertices.end());
+
+    std::cout << "Successfully merged vertices " << std::endl;
+
+    std::vector<uint32_t> tmp = other->indices;
+    uint32_t indice_count = indices.size();
+    for(std::size_t i = 0; i < tmp.size(); ++i) {
+        tmp[i] += indice_count;
     }
 
-    uint32_t indice_count = indices.size();
-    for(std::size_t i = 0; i < other->indices.size(); ++i) {
-        indices.push_back(other->indices[i] + indice_count);
-    }
-    
+    indices.insert(indices.end(), tmp.begin(), tmp.end());
 }
