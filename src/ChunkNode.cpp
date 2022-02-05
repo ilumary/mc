@@ -63,7 +63,9 @@ void ChunkNode::get_nodes_recursive(std::vector<ChunkNode*> *nodes, int distance
 
 	if (distance > 0) {
 		for (unsigned int i = 0; i < 4; i++) {
-			neighbors_[i]->get_nodes_recursive(nodes, distance - 1);
+			if(neighbors_[i] != nullptr) {
+				neighbors_[i]->get_nodes_recursive(nodes, distance - 1);
+			}
 		}
 	}
 }
@@ -84,8 +86,8 @@ Mesh* ChunkNode::getGeometry(World* world) {
 void ChunkNode::generateGeometry(World* world) {
     if (node_state_ < ChunkState::CHUNK_DATA_GENERATED){
 		generateData();
-		node_state_ = ChunkState::MESH_DATA_GENERATED;
 	}
 
-	geometry_->generate(&chunk, world);
+	geometry_->generate(chunk, world);
+	node_state_ = ChunkState::MESH_DATA_GENERATED;
 }
