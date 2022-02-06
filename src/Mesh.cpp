@@ -15,9 +15,9 @@ void Mesh::merge(const Mesh* other) {
     std::cout << "Successfully merged vertices " << std::endl;
 
     std::vector<uint32_t> tmp = other->indices;
-    uint32_t indice_count = indices.size();
+    uint32_t vertex_count = vertices.size();
     for(std::size_t i = 0; i < tmp.size(); ++i) {
-        tmp[i] += indice_count;
+        tmp[i] += vertex_count;
     }
 
     indices.insert(indices.end(), tmp.begin(), tmp.end());
