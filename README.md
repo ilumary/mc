@@ -6,6 +6,7 @@ mc is my take on the always popular minecraft clones and a follow-up to my last 
 
 - Fully functional vulkan render backend
 - First-Person Camera with typical wasd controls 
+- 3d chunk system
 - Terrain generation with perlin noise
 
 Planned: 
@@ -13,7 +14,7 @@ Planned:
 - Refactor and clean up code! 
 - Fix Validation Errors
 - Add placing/destruction of blocks
-- Divide terrain into chunks with dynamic loading/unloading
+- add dynamic loading/unloading to chunk system
 - Implement some kind of better lightning system
 - Add water and corresponding physics 
 
