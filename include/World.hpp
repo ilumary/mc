@@ -6,6 +6,8 @@
 
 #include <fmt/core.h>
 
+class ChunkNode;
+
 class World {
     
 public:
@@ -24,7 +26,7 @@ public:
     //returns position in chunk index
     glm::vec3 get_current_node_index_of_position(glm::vec3 position);
 
-    //
+    //returns new current node from given position
     ChunkNode* get_current_node_from_position(glm::vec3 position);
 
     //returns Chunk block at given position
