@@ -3,6 +3,7 @@
 
 #include "Mesh.hpp"
 #include "Chunk.hpp"
+#include "World.hpp"
 
 #include <iostream>
 
