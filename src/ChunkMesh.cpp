@@ -69,13 +69,15 @@ void ChunkMesh::generate(Chunk& chunk, World* world) {
 
 					//Bottom face
 					if (y == 0 || chunk.chunk_data_[x][y - 1][z] == Chunk::BlockType::CLEAR) {
-						add_block_side_indices(index_constants, size);
+						if(chunk.chunk_position_.y != 0 && y > 0) {
+							add_block_side_indices(index_constants, size);
 
-						vertices.push_back({ { nx, ny, pz },{ 0, 1, 0 },{ block_uvs[value - 1].x, block_uvs[value - 1].w } });
-						vertices.push_back({ { nx, ny, nz },{ 0, 1, 0 },{ block_uvs[value - 1].x, block_uvs[value - 1].y } });
-						vertices.push_back({ { px, ny, nz },{ 0, 1, 0 },{ block_uvs[value - 1].z, block_uvs[value - 1].y } });
-						vertices.push_back({ { px, ny, pz },{ 0, 1, 0 },{ block_uvs[value - 1].z, block_uvs[value - 1].w } });
-						size += 4;
+							vertices.push_back({ { nx, ny, pz },{ 0, 1, 0 },{ block_uvs[value - 1].x, block_uvs[value - 1].w } });
+							vertices.push_back({ { nx, ny, nz },{ 0, 1, 0 },{ block_uvs[value - 1].x, block_uvs[value - 1].y } });
+							vertices.push_back({ { px, ny, nz },{ 0, 1, 0 },{ block_uvs[value - 1].z, block_uvs[value - 1].y } });
+							vertices.push_back({ { px, ny, pz },{ 0, 1, 0 },{ block_uvs[value - 1].z, block_uvs[value - 1].w } });
+							size += 4;
+						}
 					}
 
 					//Right face
