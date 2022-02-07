@@ -70,9 +70,27 @@ void ChunkNode::get_nodes_recursive(std::vector<ChunkNode*> *nodes, int distance
 	}
 }
 
+//add chunk gen for direkt neighbors
 void ChunkNode::generateData() {
     chunk.generate_chunk_data();
-    node_state_ = ChunkState::CHUNK_DATA_GENERATED;
+	node_state_ = ChunkState::CHUNK_DATA_GENERATED;
+
+	//X - 1 WEST
+	if (neighbors_[ChunkNode::WEST] != nullptr) {
+		neighbors_[ChunkNode::WEST]->chunk.generate_chunk_data();
+	}
+	//X + 1 EAST
+	if (neighbors_[ChunkNode::EAST] != nullptr) {
+		neighbors_[ChunkNode::EAST]->chunk.generate_chunk_data();
+	}
+	//Z + 1 NORTH
+	if (neighbors_[ChunkNode::NORTH] != nullptr) {
+		neighbors_[ChunkNode::NORTH]->chunk.generate_chunk_data();
+	}
+	//Z - 1 SOUTH
+	if (neighbors_[ChunkNode::SOUTH] != nullptr) {
+		neighbors_[ChunkNode::SOUTH]->chunk.generate_chunk_data();
+	}
 }
 
 Mesh* ChunkNode::getGeometry(World* world) {

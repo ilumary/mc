@@ -1,8 +1,12 @@
 #ifndef CHUNKNODE_HPP
 #define CHUNKNODE_HPP
 
+#include "World.hpp"
 #include "Chunk.hpp"
 #include "ChunkMesh.hpp"
+
+class ChunkMesh;
+class World;
 
 class ChunkNode {
 
