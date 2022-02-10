@@ -24,9 +24,10 @@ public:
     static glm::vec4 calculate_uv(int x, int y, int size);
 
     //generate geometry data for given chunk
-    void generate(Chunk& chunk, World* world);
+    void generate(Chunk& chunk);
 
-private: 
+private:
+
     //function streamlines index pushing for better understanding
     void add_block_side_indices(uint32_t push_indices[6], uint32_t size);
 };

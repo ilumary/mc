@@ -5,7 +5,7 @@ glm::vec4 ChunkMesh::calculate_uv(int x, int y, int size) {
 	return glm::vec4(step * x, step * y, step * x + step, step * y + step);
 }
 
-void ChunkMesh::generate(Chunk& chunk, World* world) {
+void ChunkMesh::generate(Chunk& chunk) {
     vertices.clear();
 	indices.clear();
 
@@ -21,23 +21,23 @@ void ChunkMesh::generate(Chunk& chunk, World* world) {
 				int value = chunk.chunk_data_[x][y][z];
 
 				if (value != Chunk::BlockType::CLEAR) {
-					//invert y because standard vulcan viewport is flipped 
+					//invert y because standard vulcan viewport is flipped
 					float ix = x + start.x;
 					float iy = (y * -1) - start.y;
 					float iz = z + start.z;
-					
+
 					float px = 1.0f + ix;
 					float py = iy - 1.0f;
 					float pz = 1.0f + iz;
-						
+
 					float nx = ix;
 					float ny = iy;
 					float nz = iz;
-					
+
 					//Front Face
-					if ((z == 0 && world->getBlock({nx, ny, nz - 1}) == Chunk::BlockType::CLEAR) || (z > 0 && chunk.chunk_data_[x][y][z - 1] == Chunk::BlockType::CLEAR)) {
+					if (z == 0 || chunk.chunk_data_[x][y][z - 1] == Chunk::BlockType::CLEAR) {
 						add_block_side_indices(index_constants, size);
-						
+
 						vertices.push_back({ { nx, ny, nz },{ 0, 0, -1 },{ block_uvs[value - 1].x, block_uvs[value - 1].w } });
 						vertices.push_back({ { nx, py, nz },{ 0, 0, -1 },{ block_uvs[value - 1].x, block_uvs[value - 1].y } });
 						vertices.push_back({ { px, py, nz },{ 0, 0, -1 },{ block_uvs[value - 1].z, block_uvs[value - 1].y } });

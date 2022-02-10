@@ -27,11 +27,13 @@ public:
         UNINITIALIZED = 0,
         CHUNK_DATA_GENERATED = 1,
         MESH_DATA_GENERATED = 2,
+        SURROUND_DATA_GATHERED = 3,
     };
 
     //represents current chunk state
     int node_state_;
 
+    //holds node position
     glm::vec3 node_position_;
 
     //holds chunk data of node
@@ -40,13 +42,13 @@ public:
     //holds chunk gemotry of node
     ChunkMesh* geometry_;
 
-    //holds pointers to all neighboring chunk nodes 
+    //holds pointers to all neighboring chunk nodes
     ChunkNode* neighbors_[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 
     //initialise new chunk node
     ChunkNode(glm::vec3 position);
 
-    //creates chunk data recursively 
+    //creates chunk data recursively
     void create_node_neighbors_recursively(int distance);
 
     //traverses recursively through the nodes, each checking if it already exists within vector
@@ -56,10 +58,10 @@ public:
     void generateData();
 
     //get mesh of this node
-    Mesh* getGeometry(World* world);
+    Mesh* getGeometry();
 
     //generate Mesh of this node
-    void generateGeometry(World *world);
+    void generateGeometry();
 };
 
 #endif // CHUNKNODE_HPP
