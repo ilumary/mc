@@ -12,7 +12,8 @@ mc is my take on the always popular minecraft clones and a follow-up to my last 
 Planned: 
 
 - Refactor and clean up code! 
-- Fix Validation Errors
+- Fix Validation Error
+- Figure out a way to reduce memory usage in high render distance scenarios
 - Add placing/destruction of blocks
 - add dynamic loading/unloading to chunk system
 - Implement some kind of better lightning system
