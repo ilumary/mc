@@ -20,6 +20,9 @@ public:
         calculate_uv(1, 0, 16) // STONE
     };
 
+    //holds border data of surrounding chunks
+    int surround_data_[6][Chunk::SIZE][Chunk::SIZE];
+
     //calculates uv cords of given texture size
     static glm::vec4 calculate_uv(int x, int y, int size);
 

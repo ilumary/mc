@@ -34,8 +34,12 @@ void ChunkMesh::generate(Chunk& chunk) {
 					float ny = iy;
 					float nz = iz;
 
+                    uint32_t sx = static_cast<uint32_t>(nx);
+                    uint32_t sy = static_cast<uint32_t>(ny);
+                    uint32_t sz = static_cast<uint32_t>(nz);
+
 					//Front Face
-					if (z == 0 || chunk.chunk_data_[x][y][z - 1] == Chunk::BlockType::CLEAR) {
+					if ((z == 0 && surround_data_[2][x][y] == Chunk::BlockType::CLEAR) || (z != 0 && chunk.chunk_data_[x][y][z - 1] == Chunk::BlockType::CLEAR)) {
 						add_block_side_indices(index_constants, size);
 
 						vertices.push_back({ { nx, ny, nz },{ 0, 0, -1 },{ block_uvs[value - 1].x, block_uvs[value - 1].w } });
@@ -46,7 +50,7 @@ void ChunkMesh::generate(Chunk& chunk) {
 					}
 
 					//Back Face
-					if (z == Chunk::SIZE - 1 || chunk.chunk_data_[x][y][z + 1] == Chunk::BlockType::CLEAR) {
+					if ((z == Chunk::SIZE -1 && surround_data_[0][x][y] == Chunk::BlockType::CLEAR) || (z != Chunk::SIZE - 1 && chunk.chunk_data_[x][y][z + 1] == Chunk::BlockType::CLEAR)) {
 						add_block_side_indices(index_constants, size);
 
 						vertices.push_back({ { px, ny, pz },{ 0, 0, 1 },{ block_uvs[value - 1].x, block_uvs[value - 1].w } });
@@ -80,8 +84,8 @@ void ChunkMesh::generate(Chunk& chunk) {
 						}
 					}
 
-					//Right face
-					if (x == Chunk::SIZE - 1 || chunk.chunk_data_[x + 1][y][z] == Chunk::BlockType::CLEAR) {
+					//Left face
+                    if ((x == Chunk::SIZE - 1 && surround_data_[3][z][y] == Chunk::BlockType::CLEAR) || (x != Chunk::SIZE - 1 && chunk.chunk_data_[x + 1][y][z] == Chunk::BlockType::CLEAR)) {
 						add_block_side_indices(index_constants, size);
 
 						vertices.push_back({ { px, ny, nz },{ 1, 0, 0 },{ block_uvs[value - 1].x, block_uvs[value - 1].w } });
@@ -92,7 +96,8 @@ void ChunkMesh::generate(Chunk& chunk) {
 					}
 
 					//Left face
-					if (x == 0 || chunk.chunk_data_[x - 1][y][z] == Chunk::BlockType::CLEAR) {
+                    if ((x == 0 && surround_data_[1][z][y] == Chunk::BlockType::CLEAR) || (x != 0 && chunk.chunk_data_[x - 1][y][z] == Chunk::BlockType::CLEAR)) {
+					//if (x == 0 || chunk.chunk_data_[x - 1][y][z] == Chunk::BlockType::CLEAR) {
 						add_block_side_indices(index_constants, size);
 
 						vertices.push_back({ { nx, ny, pz },{ -1, 0, 0 },{ block_uvs[value - 1].x, block_uvs[value - 1].w } });
