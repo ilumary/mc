@@ -62,6 +62,9 @@ public:
 
     //generate Mesh of this node
     void generateGeometry();
+
+    //gathers the border data of the surrounding chunk for mesh creation
+    void gather_surrounding_chunk_data();
 };
 
 #endif // CHUNKNODE_HPP

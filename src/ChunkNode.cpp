@@ -102,6 +102,43 @@ void ChunkNode::generateGeometry() {
 		generateData();
 	}
 
+    if(node_state_ < SURROUND_DATA_GATHERED) {
+        gather_surrounding_chunk_data();
+    }
+
 	geometry_->generate(chunk);
 	node_state_ = ChunkState::MESH_DATA_GENERATED;
+}
+
+void ChunkNode::gather_surrounding_chunk_data() {
+    std::cout << "Generating surrounding chunk data" << std::endl;
+
+    //for every side of the chunk, gather corresponding data
+    for(uint32_t chunk_face = 0; chunk_face < 4; ++chunk_face) {
+        if(neighbors_[chunk_face] != nullptr) {
+            //Caution, only made for 2d chunk world!!!
+            int relevant_chunk_face = (chunk_face + 2) % 4;
+            int static_chunk_var = chunk_face > 1 ? 15 : 0;
+
+            //North or South, z is static
+            if(chunk_face % 2 == 0) {
+                for(int x = 0; x < Chunk::SIZE; ++x) {
+                    for(int y = 0; y < Chunk::SIZE; ++y) {
+                        geometry_->surround_data_[relevant_chunk_face][x][y] = neighbors_[chunk_face]->chunk.chunk_data_[x][y][static_chunk_var];
+                    }
+                }
+            }
+
+            //West or East, x is static
+            if(chunk_face % 2 == 1) {
+                for(int z = 0; z < Chunk::SIZE; ++z) {
+                    for(int y = 0; y < Chunk::SIZE; ++y) {
+                        geometry_->surround_data_[relevant_chunk_face][z][y] = neighbors_[chunk_face]->chunk.chunk_data_[static_chunk_var][y][z];
+                    }
+                }
+            }
+        } else {
+            fmt::print("Fatal Error retrieving chunk border data for side {}", chunk_face);
+        }
+    }
 }
