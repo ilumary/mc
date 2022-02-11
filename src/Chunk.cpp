@@ -7,13 +7,17 @@ void Chunk::set_chunk_position(glm::vec3 new_position) {
 void Chunk::generate_chunk_data() {
     for(int x = 0; x < SIZE; ++x) {
         for(int z = 0; z < SIZE; ++z) {
-            chunk_data_[x][0][z] = Chunk::BlockType::STONE;
+            //chunk_data_[x][0][z] = Chunk::BlockType::STONE;
             //int surface_height = get_surface_height({x, z});
+            int surface_height = 10;
 
-            //if(surface_height >= 16) { surface_height = 15; }
+            if(surface_height > 15) { surface_height = 15; }
 
-            for(int y = 1; y < 16; ++y) {
-                //chunk_data_[x][y][z] = get_block_type({x, y, z}, surface_height);
+            for(int y = 0; y < surface_height; ++y) {
+                chunk_data_[x][y][z] = get_block_type({x, y, z}, surface_height);
+                //chunk_data_[x][y][z] = Chunk::BlockType::CLEAR;
+            }
+            for(int y = surface_height; y < SIZE; ++y) {
                 chunk_data_[x][y][z] = Chunk::BlockType::CLEAR;
             }
         }
