@@ -5,11 +5,18 @@ void Chunk::set_chunk_position(glm::vec3 new_position) {
 }
 
 void Chunk::generate_chunk_data() {
+
+    glm::vec3 start = {chunk_position_.x * SIZE, chunk_position_.y * SIZE, chunk_position_.z * SIZE};
+
     for(int x = 0; x < SIZE; ++x) {
         for(int z = 0; z < SIZE; ++z) {
+
+            float ax = x + start.x;
+            float az = z + start.z;
+
             //chunk_data_[x][0][z] = Chunk::BlockType::STONE;
-            //int surface_height = get_surface_height({x, z});
-            int surface_height = 10;
+            int surface_height = get_surface_height({ax, az});
+            //int surface_height = 10;
 
             if(surface_height > 15) { surface_height = 15; }
 
