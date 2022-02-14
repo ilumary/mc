@@ -20,7 +20,7 @@ public:
 
 	void generate();
 
-	void merge(const Mesh* other);
+	void merge(Mesh* other);
 
 	void destroy(vkc::Core& core);
 };

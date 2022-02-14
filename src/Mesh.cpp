@@ -7,7 +7,7 @@ void Mesh::destroy(vkc::Core& core) {
     vmaDestroyBuffer(core.allocator(), vertex_buffer.buffer, vertex_buffer.allocation);
 }
 
-void Mesh::merge(const Mesh* other) {
+void Mesh::merge(Mesh* other) {
     //take vertex count before vertice merge to prevent corruption of first element
     uint32_t vertex_count = vertices.size();
 
@@ -26,4 +26,7 @@ void Mesh::merge(const Mesh* other) {
     indices.insert(indices.end(), tmp.begin(), tmp.end());
 
     //std::cout << "Mesh now containing " << vertices.size() << " vertices and " << indices.size() << " indices" << std::endl;
+
+    other->vertices.clear();
+    other->indices.clear();
 }
