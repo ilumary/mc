@@ -13,6 +13,7 @@ void Mesh::merge(Mesh* other) {
 
     //std::cout << "Merging Mesh with " << other->vertices.size() << " into Mesh with "<< vertices.size() << " vertices" << std::endl;
 
+    vertices.reserve(other->vertices.size() + vertices.size());
     vertices.insert(vertices.end(), other->vertices.begin(), other->vertices.end());
 
     std::vector<uint32_t> tmp = other->indices;
@@ -23,6 +24,7 @@ void Mesh::merge(Mesh* other) {
         tmp[i] += vertex_count;
     }
 
+    indices.reserve(other->indices.size() + indices.size());
     indices.insert(indices.end(), tmp.begin(), tmp.end());
 
     //std::cout << "Mesh now containing " << vertices.size() << " vertices and " << indices.size() << " indices" << std::endl;
