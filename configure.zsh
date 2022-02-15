@@ -1,3 +1,3 @@
 #! /bin/zsh/
 
-cmake -DGLFW_BUILD_DOCS=OFF -S . -B out/build/
+cmake -DCMAKE_BUILD_TYPE=Debug -DGLFW_BUILD_DOCS=OFF -S . -B out/build/
