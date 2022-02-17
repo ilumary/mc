@@ -14,15 +14,12 @@ void Chunk::generate_chunk_data() {
             float ax = x + start.x;
             float az = z + start.z;
 
-            //chunk_data_[x][0][z] = Chunk::BlockType::STONE;
             int surface_height = get_surface_height({ax, az});
-            //int surface_height = 10;
 
             if(surface_height > 15) { surface_height = 15; }
 
             for(int y = 0; y < surface_height; ++y) {
                 chunk_data_[x][y][z] = get_block_type({x, y, z}, surface_height);
-                //chunk_data_[x][y][z] = Chunk::BlockType::CLEAR;
             }
             for(int y = surface_height; y < SIZE; ++y) {
                 chunk_data_[x][y][z] = Chunk::BlockType::CLEAR;

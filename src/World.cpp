@@ -13,18 +13,23 @@ Mesh* World::getWorldMesh(glm::vec3 position, int distance) {
     current = get_current_node_from_position(position);
 
     //create neighbor object for all nodes in range
+    std::vector<ChunkNode*> nodes;
+
     if(current != nullptr) {
-        current->create_node_neighbors_recursively(distance + 1);
+        current->create_node_neighbors_recursively(distance + 1, &nodes);
     }
+
+    //clear node vector
+    nodes.clear();
 
     //get all neighbors
-    std::vector<ChunkNode*> nodes;
     current->get_nodes_recursive(&nodes, distance);
 
-    fmt::print("Got {} nodes\n", nodes.size());
+    fmt::print("Got {} nodes: [\n", nodes.size());
     for(int i = 0; i < nodes.size(); i++) {
-        fmt::print("Node No {} with pos {} {} {}\n", i, nodes[i]->node_position_.x, nodes[i]->node_position_.y, nodes[i]->node_position_.z);
+        fmt::print("    Node No {} with pos {} {} {}\n", i, nodes[i]->node_position_.x, nodes[i]->node_position_.y, nodes[i]->node_position_.z);
     }
+    fmt::print("]\n");
 
     //get all neighbors meshes
     std::vector<Mesh*> meshes;
@@ -32,7 +37,7 @@ Mesh* World::getWorldMesh(glm::vec3 position, int distance) {
         meshes.push_back(nodes[i]->getGeometry());
         fmt::print("Pushing back {} vertices to node with pos {} {} {}\n", nodes[i]->geometry_->vertices.size(), nodes[i]->node_position_.x, nodes[i]->node_position_.y, nodes[i]->node_position_.z);
     }
-    fmt::print("Got {} meshes\n", meshes.size());
+    fmt::print("Merging {} meshes\n", meshes.size());
 
     //merge meshes
     for(std::size_t i = 0; i < meshes.size(); ++i) {
