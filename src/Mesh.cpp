@@ -29,6 +29,6 @@ void Mesh::merge(Mesh* other) {
 
     //std::cout << "Mesh now containing " << vertices.size() << " vertices and " << indices.size() << " indices" << std::endl;
 
-    other->vertices.clear();
-    other->indices.clear();
+    std::vector<Vertex>().swap(other->vertices);
+    std::vector<uint32_t>().swap(other->indices);
 }
