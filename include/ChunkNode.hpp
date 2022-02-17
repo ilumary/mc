@@ -49,7 +49,13 @@ public:
     ChunkNode(glm::vec3 position);
 
     //creates chunk data recursively
-    void create_node_neighbors_recursively(int distance);
+    void create_node_neighbors_recursively(int distance, std::vector<ChunkNode*> *nodes);
+
+    //searches for already existing neighbors that haven't been linked to the neighbors node array
+    void update_neighbor_pointers(std::vector<ChunkNode*> *nodes);
+
+    //searches node by position in given vector of nodes
+    ChunkNode* search_node(glm::vec3 pos, std::vector<ChunkNode*> *nodes);
 
     //traverses recursively through the nodes, each checking if it already exists within vector
     void get_nodes_recursive(std::vector<ChunkNode*> *nodes, int distance);
