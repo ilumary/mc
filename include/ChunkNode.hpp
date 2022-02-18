@@ -50,6 +50,7 @@ public:
 
     //creates chunk data recursively
     void create_node_neighbors_recursively(int distance, std::vector<ChunkNode*> *nodes);
+    void create_neighbors(uint32_t distance, std::vector<ChunkNode*> *nodes);
 
     //searches for already existing neighbors that haven't been linked to the neighbors node array
     void update_neighbor_pointers(std::vector<ChunkNode*> *nodes);

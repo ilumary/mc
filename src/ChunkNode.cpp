@@ -7,9 +7,74 @@ ChunkNode::ChunkNode(glm::vec3 position) {
     geometry_ = new ChunkMesh();
 }
 
+void ChunkNode::create_neighbors(uint32_t distance, std::vector<ChunkNode*> *nodes) {
+    //nodes will be created by going in circles around the root, every two corners the step distance is increased by one
+    //the direction is given by the enum, every corner is plus one in enum until 4 is reached
+
+    std::vector<ChunkNode*>().swap(*nodes);
+    nodes->push_back(this);
+    ChunkNode* crnt_node = this;
+
+    fmt::print("Starting Node Generation from {} {}\n", crnt_node->node_position_.x, crnt_node->node_position_.z);
+
+    //static array to hold new node position offset
+    glm::vec3 new_pos_offset[4] = {{0, 0, 1}, {1, 0, 0}, {0, 0, -1}, {-1, 0, 0}};
+
+    std::vector<uint32_t> side_lengths;
+
+    uint32_t corners = distance * 4;
+    uint32_t current_direction = 0, current_side_length = 0, total_steps = 0;
+    for(uint32_t co = 0; co < corners; ++co) {
+        //for every corner add one to direction and for every second corner add one in side length
+        current_direction = (current_direction + 1) % 4;
+        if(co % 2 == 0) { current_side_length += 1; }
+        side_lengths.push_back(current_side_length);
+
+        fmt::print("New Corner. New dir: {}, side length {}\n", current_direction, current_side_length);
+
+        for(uint32_t step = 0; step < current_side_length; ++step) {
+            if(crnt_node->neighbors_[current_direction] == nullptr) {
+                //create new node, connect with last node, update current node
+                glm::vec3 new_pos = crnt_node->node_position_ + new_pos_offset[current_direction];
+                fmt::print("  New node with pos {} {} {}\n", new_pos.x, new_pos.y, new_pos.x);
+
+                crnt_node->neighbors_[current_direction] = new ChunkNode(new_pos);
+                uint32_t opposite_direction = (current_direction + 2) % 4;
+                crnt_node->neighbors_[current_direction]->neighbors_[opposite_direction] = crnt_node;
+                crnt_node = crnt_node->neighbors_[current_direction];
+                nodes->push_back(crnt_node);
+
+                ++total_steps;
+                //if node could have an inner neighbor, try to connect
+                if(current_side_length > 1 && step < current_side_length - 1) {
+                    //node could have inner neighbor, calculate distance to step back in array
+                    ChunkNode* neighboring_node;
+                    if(co < 4) {
+                        fmt::print("    Step {}, neighboring node availible but 0\n", step);
+                        neighboring_node = nodes->at(0);
+                    } else {
+                        uint32_t step_back = (side_lengths.at(co)) + (side_lengths.at(co - 1)) + (side_lengths.at(co - 2)) + (side_lengths.at(co - 3)) + 1;
+                        uint32_t index = nodes->size() - 1 - step_back;
+                        if(index < 0) { index = 0; }
+                        neighboring_node = nodes->at(index);
+                        fmt::print("    Step {}, neighboring node at {}\n", step, nodes->size() - 1 - step_back);
+                    }
+
+                    //determine direction for creating neighbor pointer
+                    uint32_t neighbor_direction = (current_direction + 1) % 4;
+                    uint32_t opposite_neighbor_direction = (neighbor_direction + 2) % 4;
+
+                    crnt_node->neighbors_[neighbor_direction] = neighboring_node;
+                    neighboring_node->neighbors_[opposite_neighbor_direction] = crnt_node;
+                }
+            }
+        }
+    }
+}
+
 void ChunkNode::create_node_neighbors_recursively(int distance, std::vector<ChunkNode*> *nodes) {
 
-    update_neighbor_pointers(nodes);
+    //update_neighbor_pointers(nodes);
 
     //X - 1 WEST
 	if (neighbors_[ChunkNode::WEST] == nullptr) {
