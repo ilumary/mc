@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.22)
 project(MC)
 
 set(CMAKE_CXX_STANDARD 20)
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address")
+set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address")
 
 include_directories(include include/vulkan-core extern/stb)
 
@@ -12,16 +14,16 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 add_subdirectory(extern/vk-bootstrap extern/vma)
 
-target_include_directories(${PROJECT_NAME} 
+target_include_directories(${PROJECT_NAME}
                 PUBLIC /opt/homebrew/include
-                PUBLIC /Library/Vulkan/macOS/include 
-                PUBLIC extern/vk-bootstrap/src
+                PUBLIC /Library/Vulkan3/macOS/include
+                PUBLIC extern/vk-bootstrap/srci
                 PUBLIC extern/vma/include
 )
 
-target_link_directories(${PROJECT_NAME} 
-                PUBLIC /opt/homebrew/lib  
-                PUBLIC /Library/Vulkan/macOS/lib
+target_link_directories(${PROJECT_NAME}
+                PUBLIC /opt/homebrew/lib
+                PUBLIC /Library/Vulkan3/macOS/lib
                 PRIVATE extern/vk-bootstrap/src
 )
 
