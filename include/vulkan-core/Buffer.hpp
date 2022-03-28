@@ -1,6 +1,8 @@
 #ifndef BUFFER_HPP
 #define BUFFER_HPP
 
+#include <string.h>
+
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan_core.h>
 

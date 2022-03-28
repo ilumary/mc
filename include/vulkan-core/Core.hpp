@@ -17,7 +17,7 @@ class Core {
     VkDevice device_{};
     VkQueue graphics_queue_{};
     VkQueue present_queue_{};
-    std::uint32_t graphics_queue_family_index_ = 0;
+    uint32_t graphics_queue_family_index_ = 0;
 
     VmaAllocator allocator_{};
 
@@ -39,7 +39,7 @@ public:
 
     inline VkQueue present_queue() noexcept { return present_queue_; }
 
-    inline std::uint32_t graphics_queue_family_index() noexcept { return graphics_queue_family_index_; }
+    inline uint32_t graphics_queue_family_index() noexcept { return graphics_queue_family_index_; }
 
     inline VmaAllocator allocator() noexcept { return allocator_; }
 };

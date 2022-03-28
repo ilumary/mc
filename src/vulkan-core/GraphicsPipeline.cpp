@@ -14,13 +14,13 @@ VkPipeline create_graphics_pipeline(Core& core, const GraphicsPipelineCreateInfo
         .vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attributes_description.size()),
         .pVertexAttributeDescriptions = vertex_attributes_description.data(),
     };
-    
+
     VkPipelineInputAssemblyStateCreateInfo input_assembly = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
         .primitiveRestartEnable = VK_FALSE,
     };
-    
+
 
     VkViewport viewport = {
         .x = 0.0f,
@@ -30,7 +30,7 @@ VkPipeline create_graphics_pipeline(Core& core, const GraphicsPipelineCreateInfo
         .minDepth = 0.0f,
         .maxDepth = 1.0f,
     };
-    
+
     VkRect2D scissor = {
         .offset = {0, 0},
         .extent = create_info.window_extent,
@@ -43,7 +43,7 @@ VkPipeline create_graphics_pipeline(Core& core, const GraphicsPipelineCreateInfo
         .scissorCount = 1,
         .pScissors = &scissor,
     };
-    
+
 
     VkPipelineRasterizationStateCreateInfo rasterizer = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
@@ -66,7 +66,7 @@ VkPipeline create_graphics_pipeline(Core& core, const GraphicsPipelineCreateInfo
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
         .blendEnable = VK_FALSE,
     };
-    
+
 
     VkPipelineColorBlendStateCreateInfo color_blending = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -85,7 +85,7 @@ VkPipeline create_graphics_pipeline(Core& core, const GraphicsPipelineCreateInfo
         .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
         .depthBoundsTestEnable = VK_FALSE,
         .stencilTestEnable = VK_FALSE,
-        .minDepthBounds = 0.0f, 
+        .minDepthBounds = 0.0f,
         .maxDepthBounds = 1.0f,
     };
 
