@@ -18,6 +18,7 @@ class Core {
     VkQueue graphics_queue_{};
     VkQueue present_queue_{};
     uint32_t graphics_queue_family_index_ = 0;
+    VkCommandPool base_command_pool_{};
 
     VmaAllocator allocator_{};
 
@@ -42,6 +43,8 @@ public:
     inline uint32_t graphics_queue_family_index() noexcept { return graphics_queue_family_index_; }
 
     inline VmaAllocator allocator() noexcept { return allocator_; }
+
+    inline VkCommandPool base_command_pool() noexcept { return base_command_pool_; }
 };
 
 }; // end namespace vkc

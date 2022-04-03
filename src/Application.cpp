@@ -8,7 +8,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
     if(action == GLFW_PRESS || action == GLFW_REPEAT) {
         app->update_camera_position(key);
-    } 
+    }
 }
 
 static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
@@ -63,7 +63,7 @@ Application::Application() {
 
     cam_.setMovementSpeed(100.f);
     cam_.setPosition({ 0.f, 2.f, 0.f });
-    cam_.setRotation({ 0.f, 90.f, 0.f });
+    cam_.setRotation({ 0.f, 180.f, 0.f });
     cam_.setPerspective(70.f, 1400.f / 900.f, 0.1f, 200.f);
     cam_.type = Camera::CameraType::firstperson;
     cam_.update(1.f);
@@ -73,7 +73,7 @@ Application::Application() {
     glfwSetKeyCallback(window_->glfw_window(), key_callback);
     glfwSetCursorPosCallback(window_->glfw_window(), cursor_position_callback);
     glfwSetMouseButtonCallback(window_->glfw_window(), mouse_button_callback);
-    
+
     init_depthbuffer();
     vk_renderpass_ = new vkc::Renderpass(*vk_core_, vk_swapchain_->format(), depth_image_format_);
     init_command();
@@ -128,7 +128,7 @@ void Application::update() {
 	delta_time_ = (actual - time_) / 1000.0f;
     frame_number_per_second_ += 1;
 
-    if(delta >= 1.f) { 
+    if(delta >= 1.f) {
         double fps = double(frame_number_per_second_) / delta;
 
         std::stringstream ss;
@@ -139,7 +139,7 @@ void Application::update() {
         frame_number_per_second_ = 0;
         last_cout_ = actual;
     }
-    
+
     if(delta_time_ < LOW_LIMIT) {
         delta_time_ = LOW_LIMIT;
     } else if(delta_time_ > HIGH_LIMIT) {
@@ -175,7 +175,7 @@ void Application::init_command() {
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex = vk_core_->graphics_queue_family_index(),
     };
-    
+
     for(std::uint32_t i = 0; i < frames_in_flight; ++i) {
         auto& frame_data = frame_data_[i];
         vkCreateCommandPool(vk_core_->device(), &command_pool_create_info, nullptr, &frame_data.command_pool);
@@ -198,11 +198,11 @@ void Application::init_framebuffer() {
         .pNext = nullptr,
         .renderPass = vk_renderpass_->renderpass(),
         .attachmentCount = 1,
-        .width = window_extent_.width, 
-        .height = window_extent_.height, 
+        .width = window_extent_.width,
+        .height = window_extent_.height,
         .layers = 1,
     };
-    
+
     const auto swapchain_imagecount = static_cast<std::uint32_t>(vk_swapchain_->images().size());
     framebuffers_ = std::vector<VkFramebuffer>(swapchain_imagecount);
 
@@ -223,12 +223,11 @@ void Application::init_texture_image() {
 
     void* pixel_ptr = pixels;
 	VkDeviceSize imageSize = texWidth * texHeight * 4;
-	VkFormat image_format = VK_FORMAT_R8G8B8A8_SRGB;
 
 	vkc::AllocatedBuffer stagingBuffer = vkc::create_buffer_from_data(*vk_core_, {
-        .alloc_size = imageSize, 
-        .memory_usage = VMA_MEMORY_USAGE_CPU_ONLY,
+        .alloc_size = imageSize,
         .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        .memory_usage = VMA_MEMORY_USAGE_CPU_ONLY,
     }, pixel_ptr);
 
     vkc::create_image(*vk_core_, {
@@ -238,21 +237,18 @@ void Application::init_texture_image() {
         .usage_flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
     }, texture_.image_);
 
-    for (std::uint32_t i = 0; i < frames_in_flight; ++i) {
+    vkc::transitionImageLayout(*vk_core_, vk_core_->base_command_pool(), texture_.image_, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-        vkc::transitionImageLayout(*vk_core_, frame_data_[i].command_pool, texture_.image_, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    vkc::copyBufferToImage(*vk_core_, vk_core_->base_command_pool(), stagingBuffer, texture_.image_, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 
-        vkc::copyBufferToImage(*vk_core_, frame_data_[i].command_pool, stagingBuffer, texture_.image_, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    vkc::transitionImageLayout(*vk_core_, vk_core_->base_command_pool(), texture_.image_, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        vkc::transitionImageLayout(*vk_core_, frame_data_[i].command_pool, texture_.image_, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    }
 
     vkc::destroy_buffer(*vk_core_, stagingBuffer);
 
     vkc::create_image_view(*vk_core_, {
-        .image = texture_.image_.image, 
-        .format = VK_FORMAT_R8G8B8A8_UNORM, 
+        .image = texture_.image_.image,
+        .format = VK_FORMAT_R8G8B8A8_UNORM,
         .aspect_flags = VK_IMAGE_ASPECT_COLOR_BIT,
     }, texture_.image_view_);
 }
@@ -429,8 +425,8 @@ void Application::render() {
     auto current_frame_data = get_current_frame();
 
 	GPUCameraData cam_data = {
-        .proj = cam_.matrices.perspective,
         .view = cam_.matrices.view,
+        .proj = cam_.matrices.perspective,
         .viewproj = cam_.matrices.perspective * cam_.matrices.view,
     };
 
@@ -444,7 +440,7 @@ void Application::render() {
 
     uint32_t swapchain_image_index = 0;
     vkAcquireNextImageKHR(vk_core_->device(), vk_swapchain_->swapchain(), 1000000000, current_frame_data.present_semaphore, nullptr, &swapchain_image_index);
-    
+
     vkResetCommandBuffer(current_frame_data.command_buffer, 0);
 
     const VkCommandBuffer cmd = current_frame_data.command_buffer;
@@ -473,14 +469,35 @@ void Application::render() {
         .pClearValues = &clear_values[0],
     };
 
+    /*const VkRenderingAttachmentInfo color_attachment_info {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+        .imageView = vk_swapchain_->image_views()[swapchain_image_index],
+        .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = clear_color_value,
+    };
+
+    const VkRenderingInfo vk_rendering_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .pNext = nullptr,
+        .renderArea.offset.x = 0,
+        .renderArea.offset.y = 0,
+        .renderArea.extent = window_extent_,
+        .layerCount = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_attachment_info,
+    };*/
+
     vkCmdBeginRenderPass(cmd, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+    //vkCmdBeginRendering(cmd, &vk_rendering_info);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_);
 
     VkDeviceSize offset = 0;
-    
+
     vkCmdBindVertexBuffers(cmd, 0, 1, &world_mesh_->vertex_buffer.buffer, &offset);
-    
+
     vkCmdBindIndexBuffer(cmd, world_mesh_->index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_layout_, 0, 1, &current_frame_data.global_descriptor, 0, nullptr);
@@ -488,6 +505,7 @@ void Application::render() {
     vkCmdDrawIndexed(cmd, static_cast<std::uint32_t>(world_mesh_->indices.size()), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(cmd);
+    //vkCmdEndRendering(cmd);
     vkEndCommandBuffer(cmd);
 
     const VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -496,7 +514,7 @@ void Application::render() {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = nullptr,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &current_frame_data.present_semaphore, 
+        .pWaitSemaphores = &current_frame_data.present_semaphore,
         .pWaitDstStageMask = &wait_stage,
         .commandBufferCount = 1,
         .pCommandBuffers = &current_frame_data.command_buffer,
@@ -524,7 +542,7 @@ void Application::render() {
 }
 
 void Application::load_mesh() {
-    world_mesh_ = world_.getWorldMesh(cam_.position, 1);
+    world_mesh_ = world_.getWorldMesh(cam_.position, 5);
 
     upload_mesh(world_mesh_);
 }

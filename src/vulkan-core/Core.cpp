@@ -14,7 +14,7 @@ namespace vkc {
             fmt::print("{}\n", instance_ret.error().message());
             std::exit(1);
         }
-            
+
         instance_ = instance_ret->instance;
         glfwCreateWindowSurface(instance_, window.glfw_window(), nullptr, &surface_);
         debug_messenger_ = instance_ret->debug_messenger;
@@ -36,7 +36,7 @@ namespace vkc {
         }
         auto vkb_device = device_ret.value();
         device_ = vkb_device.device;
-        
+
         graphics_queue_ = vkb_device.get_queue(vkb::QueueType::graphics).value();
         graphics_queue_family_index_ = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
         present_queue_ = vkb_device.get_queue(vkb::QueueType::present).value();
@@ -48,9 +48,20 @@ namespace vkc {
         };
 
         vmaCreateAllocator(&allocator_create_info, &allocator_);
+
+        const VkCommandPoolCreateInfo command_pool_create_info = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+            .queueFamilyIndex = graphics_queue_family_index_,
+        };
+
+        vkCreateCommandPool(device_, &command_pool_create_info, nullptr, &base_command_pool_);
     }
 
     Core::~Core(){
+        vkDestroyCommandPool(device_, base_command_pool_, nullptr);
+
         if (!instance_) return;
 
         vmaDestroyAllocator(allocator_);
