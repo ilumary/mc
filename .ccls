@@ -14,3 +14,5 @@ g++
 ./extern/vma/include
 -I
 ./extern/vk-bootstrap/src
+-I
+./extern/ktx/include
